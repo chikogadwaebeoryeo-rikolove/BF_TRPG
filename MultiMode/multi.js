@@ -242,9 +242,9 @@
 
   function finalText(final) {
     if (!final) return finalEnabled() ? isHost() ? "범인 지목 대기" : "경찰 지목 대기" : "질문과 발언 종료 후 진행";
-    if (final.suspectCorrect && !final.done) return "범인 지목 성공 · 무기 지목 대기";
+    if (final.suspectCorrect && !final.done) return "무기까지 맞춰야 정답";
     if (!final.suspectCorrect) return "범인 지목 실패";
-    return final.weaponCorrect ? "사건 해결 성공" : "무기 지목 실패";
+    return final.weaponCorrect ? "정답 처리 완료" : "무기 지목 실패";
   }
 
   function renderFinalControl() {
