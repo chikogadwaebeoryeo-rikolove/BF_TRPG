@@ -33,6 +33,32 @@
     return Boolean(localPlayer()?.host);
   }
 
+  function renderPlayers() {
+    const { $ } = window.App;
+    const list = $("room-player-list");
+    list.replaceChildren(...(multi.room?.players || []).map((player) => {
+      const item = document.createElement("li");
+      const info = document.createElement("div");
+      const name = document.createElement("strong");
+      const detail = document.createElement("span");
+      item.className = "player-row";
+      info.className = "player-main";
+      name.textContent = `${player.name}${player.name === multi.currentName ? " (나)" : ""}`;
+      detail.textContent = `${player.job || (player.host ? "수사관" : "직업 대기")} · ${player.role || (player.host ? "경찰" : "역할 비공개")} · ${player.score || 0}점${player.host ? " · 방장" : ""}`;
+      info.append(name, detail);
+      item.appendChild(info);
+      if (isHost() && !player.host) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "kick-button";
+        btn.textContent = "강퇴";
+        btn.addEventListener("click", () => kickPlayer(player.name));
+        item.appendChild(btn);
+      }
+      return item;
+    }));
+  }
+
   function suspects() {
     if (!multi.room) return [];
     return multi.room.players.filter((player) => !player.host);
@@ -77,17 +103,17 @@
   }
 
   async function joinRoom(code) {
-    const { setMode, setRole, toast } = window.App;
+    const { setMode, setRole, toast, jobs } = window.App;
     setMode("multi");
     playerName();
     try {
-      multi.room = await api("/api/rooms/join", { code, name: multi.currentName });
+      multi.room = await api("/api/rooms/join", { code, name: multi.currentName, jobs });
       multi.roleKey = "";
       setRole(null, multi.currentName);
       openRoom();
       toast(`${multi.room.code} 방에 참여했습니다.`);
     } catch (error) {
-      toast(error.message === "server_url_required" ? "멀티 서버 URL을 설정해야 합니다." : "방에 참여하지 못했습니다.");
+      toast(error.message === "server_url_required" ? "멀티 서버 URL을 설정해야 합니다." : error.message === "player_banned" ? "방장이 내보낸 이름은 재입장할 수 없습니다." : "방에 참여하지 못했습니다.");
     }
   }
 
@@ -100,13 +126,21 @@
   }
 
   async function refreshRoom() {
-    const { toast } = window.App;
+    const { toast, state, showLobby } = window.App;
     if (!multi.room) return;
     try {
       multi.room = await api(`/api/rooms/state?code=${encodeURIComponent(multi.room.code)}&name=${encodeURIComponent(multi.currentName)}`);
       renderRoom();
     } catch (error) {
-      toast("방 상태를 갱신하지 못했습니다.");
+      if (error.message === "player_banned") {
+        clearInterval(state.roomTimer);
+        state.roomTimer = null;
+        multi.room = null;
+        showLobby();
+        toast("방장이 내보낸 이름은 재입장할 수 없습니다.");
+      } else {
+        toast("방 상태를 갱신하지 못했습니다.");
+      }
     }
   }
 
@@ -122,7 +156,7 @@
   }
 
   function renderRoom() {
-    const { $, fillList, pick, state } = window.App;
+    const { $, pick, state } = window.App;
     const room = multi.room;
     if (!room) return;
     syncRole();
@@ -133,7 +167,7 @@
     $("room-share-text").textContent = room.started ? "게임이 시작되었습니다." : "다른 플레이어는 이 링크로 접속한 뒤 방 코드를 입력합니다.";
     $("room-url").textContent = share;
     $("room-player-count").textContent = `${room.players.length}/15`;
-    fillList($("room-player-list"), room.players.map((p) => `${p.name} · ${p.job || (p.host ? "수사관" : "직업 대기")} · ${p.role || (p.host ? "경찰" : "역할 비공개")}`));
+    renderPlayers();
     $("btn-start-room").classList.toggle("hidden", room.started || !isHost());
     $("btn-start-room").disabled = room.players.length < 3;
     $("multi-case-meta").textContent = "초기 공개 정보";
@@ -162,6 +196,7 @@
   function renderQuestionControl() {
     const { $, questions } = window.App;
     const room = multi.room;
+    const rerolls = room.rerolls || 0;
     const blocked = !room.started || Boolean(room.speech) || Boolean(room.active) || Boolean(room.final) || room.phase > 1 || room.used >= 3;
     $("multi-question-state").textContent = !room.started ? "3명 이상 입장 후 시작" : room.speech ? "발언 진행 중" : room.active ? `${room.active.target} 답변 대기` : isHost() ? `${room.used}/3 질문` : "경찰 질문 대기";
     $("multi-question-list").replaceChildren();
@@ -185,7 +220,8 @@
       btn.addEventListener("click", () => ask(player.name));
       $("multi-target-list").appendChild(btn);
     });
-    $("btn-reroll-multi-hand").disabled = !isHost() || !room.started || Boolean(room.speech) || Boolean(room.active) || Boolean(room.final) || room.phase > 1 || room.used >= 3;
+    $("btn-reroll-multi-hand").textContent = `패 리롤 (${rerolls}/3)`;
+    $("btn-reroll-multi-hand").disabled = !isHost() || !room.started || Boolean(room.speech) || Boolean(room.active) || Boolean(room.final) || room.phase > 1 || room.used >= 3 || rerolls >= 3;
   }
 
   async function ask(target) {
@@ -207,7 +243,7 @@
       multi.selectedQuestion = null;
       renderRoom();
     } catch (error) {
-      toast("패를 리롤할 수 없습니다.");
+      toast(error.message === "reroll_limit" ? "패 리롤은 방 전체에서 3번까지만 가능합니다." : "패를 리롤할 수 없습니다.");
     }
   }
 
@@ -292,6 +328,16 @@
     }
   }
 
+  async function kickPlayer(target) {
+    const { toast } = window.App;
+    try {
+      multi.room = await api("/api/rooms/kick", { code: multi.room.code, name: multi.currentName, target });
+      renderRoom();
+    } catch (error) {
+      toast("플레이어를 내보낼 수 없습니다.");
+    }
+  }
+
   async function submitSpeech() {
     const { $, toast } = window.App;
     const text = $("speech-input").value.trim();
@@ -341,5 +387,5 @@
     }));
   }
 
-  window.MultiMode = { createRoom, joinRoom, refreshRoom, startRoom, rerollHand, submitAnswer, submitSpeech, submitChat, submitWeapon };
+  window.MultiMode = { createRoom, joinRoom, refreshRoom, startRoom, rerollHand, submitAnswer, submitSpeech, submitChat, submitWeapon, kickPlayer };
 })();
