@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Omega Byte</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="./styles.css?v=20260626-4">
-  <link rel="stylesheet" href="../SoloMode/solo.css?v=20260626-4">
-  <link rel="stylesheet" href="../MultiMode/multi.css?v=20260626-4">
+  <link rel="stylesheet" href="./styles.css?v=20260626-5">
+  <link rel="stylesheet" href="../SoloMode/solo.css?v=20260626-5">
+  <link rel="stylesheet" href="../MultiMode/multi.css?v=20260626-5">
 </head>
 <body>
   <canvas id="particle-canvas"></canvas>
@@ -87,8 +87,8 @@
           <p id="case-victim" class="case-victim"></p>
           <div class="case-brief-grid">
             <div>
-              <span>메모</span>
-              <textarea id="case-memo" class="case-memo" maxlength="500" placeholder="메모"></textarea>
+              <span>무기</span>
+              <strong id="case-weapon"></strong>
             </div>
             <div>
               <span>현장</span>
@@ -99,10 +99,10 @@
 
         <article class="panel">
           <div class="section-head">
-            <span>증거</span>
-            <strong id="evidence-count">0장</strong>
+            <span>메모</span>
+            <strong>저장됨</strong>
           </div>
-          <ul id="evidence-list" class="card-list"></ul>
+          <textarea id="case-memo" class="case-memo" maxlength="900" placeholder="추리 메모"></textarea>
         </article>
 
         <article class="panel">
@@ -165,17 +165,23 @@
           <p id="multi-case-victim" class="case-victim"></p>
           <div class="case-brief-grid">
             <div>
-              <span>메모</span>
-              <textarea id="multi-case-memo" class="case-memo" maxlength="500" placeholder="메모"></textarea>
+              <span>무기</span>
+              <strong id="multi-case-weapon"></strong>
             </div>
             <div>
               <span>현장</span>
               <strong id="multi-case-scene"></strong>
             </div>
           </div>
-          <p id="multi-private-weapon" class="private-note hidden"></p>
-          <ul id="multi-evidence-list" class="card-list"></ul>
           <button id="btn-refresh-room" class="secondary-button">상태 새로고침</button>
+        </article>
+
+        <article class="panel">
+          <div class="section-head">
+            <span>메모</span>
+            <strong>저장됨</strong>
+          </div>
+          <textarea id="multi-case-memo" class="case-memo" maxlength="900" placeholder="추리 메모"></textarea>
         </article>
 
         <article class="panel wide">
@@ -311,9 +317,9 @@
   </div>
 
   <div id="toast"><span id="toast-text"></span></div>
-  <script src="./app.js?v=20260626-4" defer></script>
-  <script src="../SoloMode/solo.js?v=20260626-4" defer></script>
-  <script src="../MultiMode/config.js?v=20260626-4" defer></script>
-  <script src="../MultiMode/multi.js?v=20260626-4" defer></script>
+  <script src="./app.js?v=20260626-5" defer></script>
+  <script src="../SoloMode/solo.js?v=20260626-5" defer></script>
+  <script src="../MultiMode/config.js?v=20260626-5" defer></script>
+  <script src="../MultiMode/multi.js?v=20260626-5" defer></script>
 </body>
 </html>

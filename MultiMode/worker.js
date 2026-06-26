@@ -14,7 +14,7 @@ const fallbackQuestions = [
   "피해자와 숨긴 관계가 있나?",
   "출입구를 지나간 순서를 말하라.",
   "알리바이의 빈 구간은 어디인가?",
-  "공개 증거 중 설명하기 어려운 것은 무엇인가?",
+  "공개 기록 중 설명하기 어려운 것은 무엇인가?",
   "피해자와 금전 또는 원한 문제가 있었나?",
   "도구나 기록이 원래 있던 위치는 어디인가?"
 ];
@@ -117,7 +117,6 @@ export class RoomHub extends DurableObject {
     room.hand ||= [];
     room.used ||= 0;
     room.phase ||= 0;
-    room.discovered ||= [];
     room.started = Boolean(room.started);
     room.final ||= null;
     return room;
@@ -153,13 +152,6 @@ export class RoomHub extends DurableObject {
     return this.suspects(room)[room.speech.index] || null;
   }
 
-  nextClue(room) {
-    const clues = Array.isArray(room.case?.clues) ? room.case.clues : [];
-    const clue = clues.find((item) => !room.discovered.includes(item));
-    if (clue) room.discovered.push(clue);
-    return clue || "새 단서는 나오지 않았지만 진술의 모순이 기록되었습니다.";
-  }
-
   async create(body) {
     if (await this.data()) return json({ error: "room_exists" }, 409);
     const name = text(body.name, 16) || "플레이어";
@@ -176,7 +168,6 @@ export class RoomHub extends DurableObject {
       active: null,
       speech: null,
       final: null,
-      discovered: [],
       history: ["3명 이상 모이면 경찰이 게임을 시작할 수 있습니다."],
       chat: [],
       updatedAt: Date.now()
@@ -226,7 +217,6 @@ export class RoomHub extends DurableObject {
     room.phase = 0;
     room.used = 0;
     room.hand = hand(body.questions);
-    room.discovered = [];
     room.active = null;
     room.final = null;
     room.speech = suspects.length ? { type: "opening", index: 0 } : null;
@@ -271,10 +261,8 @@ export class RoomHub extends DurableObject {
     const reply = text(body.text, 300);
     if (!room.active || room.active.target !== name) return json({ error: "target_only" }, 403);
     if (!reply) return json({ error: "empty_answer" }, 400);
-    const clue = this.nextClue(room);
     room.history.push(`${room.active.target} 질문: ${room.active.question}`);
     room.history.push(`답변: ${reply}`);
-    room.history.push(`단서 발견: ${clue}`);
     room.active = null;
     if (room.used >= 3) {
       if (room.phase === 0) {

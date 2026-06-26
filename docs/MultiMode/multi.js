@@ -43,11 +43,6 @@
     return suspects()[multi.room.speech.index] || null;
   }
 
-  function clearMemo() {
-    const box = document.getElementById("multi-case-memo");
-    if (box) box.value = "";
-  }
-
   function syncRole() {
     const { setRole, state, renderRoleProfile } = window.App;
     const player = localPlayer();
@@ -75,7 +70,6 @@
       multi.roleKey = "";
       setRole(null, multi.currentName);
       openRoom();
-      clearMemo();
       toast(`방 코드 ${multi.room.code}`);
     } catch (error) {
       toast(error.message === "server_url_required" ? "멀티 서버 URL을 설정해야 합니다." : "방을 만들지 못했습니다.");
@@ -91,7 +85,6 @@
       multi.roleKey = "";
       setRole(null, multi.currentName);
       openRoom();
-      clearMemo();
       toast(`${multi.room.code} 방에 참여했습니다.`);
     } catch (error) {
       toast(error.message === "server_url_required" ? "멀티 서버 URL을 설정해야 합니다." : "방에 참여하지 못했습니다.");
@@ -145,10 +138,8 @@
     $("btn-start-room").disabled = room.players.length < 3;
     $("multi-case-meta").textContent = "초기 공개 정보";
     $("multi-case-victim").textContent = `피해자: ${gameCase.victim || "미상"}`;
+    $("multi-case-weapon").textContent = room.private?.weapon || "미확인";
     $("multi-case-scene").textContent = gameCase.scene || "미상";
-    $("multi-private-weapon").classList.toggle("hidden", !room.private?.weapon);
-    $("multi-private-weapon").textContent = room.private?.weapon ? `범인 전용 정보 · 무기: ${room.private.weapon}` : "";
-    fillList($("multi-evidence-list"), room.discovered?.length ? room.discovered : ["아직 발견된 단서가 없습니다."]);
     renderSpeechControl();
     renderQuestionControl();
     renderAnswerBox();

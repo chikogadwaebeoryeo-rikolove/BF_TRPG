@@ -24,6 +24,7 @@ body {
   background: radial-gradient(circle at 50% 0%, #11100d 0, var(--bg) 42rem);
   color: var(--text);
   font-family: Georgia, "Noto Serif KR", serif;
+  overflow-x: hidden;
   scrollbar-width: none;
 }
 
@@ -36,6 +37,7 @@ button,
 input,
 textarea {
   font: inherit;
+  max-width: 100%;
 }
 
 button {
@@ -278,6 +280,7 @@ body.session-open #main-title-container {
   padding-left: 1.1rem;
   color: #b9b1a6;
   line-height: 1.7;
+  overflow-wrap: anywhere;
 }
 
 .multi-panel {
@@ -448,16 +451,7 @@ body.session-open #main-title-container {
 
 .case-memo {
   width: 100%;
-  min-height: 4.4rem;
-}
-
-.private-note {
-  margin: 0.75rem 0 0;
-  border: 1px solid rgba(102, 252, 241, 0.35);
-  border-radius: var(--radius);
-  background: rgba(102, 252, 241, 0.08);
-  color: var(--cyan);
-  padding: 0.75rem 0.85rem;
+  min-height: 9rem;
 }
 
 .suspect-list,
@@ -681,11 +675,71 @@ body.session-open #main-title-container {
     display: grid;
   }
 
+  .panel {
+    padding: 1rem;
+  }
+
+  .role-profile,
+  .session-actions button,
+  .chat-form button {
+    width: 100%;
+  }
+
+  .question-list,
+  .suspect-list,
+  .final-pick {
+    grid-template-columns: 1fr;
+  }
+
   #join-room-form {
     width: 100%;
   }
 
   .session-top {
     align-items: stretch;
+  }
+}
+
+@media (max-width: 480px) {
+  #brand-title {
+    font-size: 2.15rem;
+    letter-spacing: 0.14em;
+  }
+
+  #main-title-container {
+    top: 5rem;
+    transform: translate(-50%, -50%) scale(0.72);
+  }
+
+  #main-content {
+    padding: 9.7rem 0.75rem 2rem;
+  }
+
+  .panel {
+    padding: 0.85rem;
+  }
+
+  .mode-grid,
+  .multi-actions,
+  .footer-actions,
+  .tab-row {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .section-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .section-head strong {
+    text-align: left;
+  }
+
+  #room-url,
+  .case-log div,
+  .suspect-card,
+  .question-card {
+    overflow-wrap: anywhere;
   }
 }
