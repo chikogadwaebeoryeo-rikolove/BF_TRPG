@@ -491,6 +491,27 @@ body.session-open #main-title-container {
   font-size: 1rem;
 }
 
+.private-brief {
+  margin-top: 0.8rem;
+  border: 1px solid #4a3324;
+  border-radius: var(--radius);
+  background: rgba(197, 168, 128, 0.08);
+  padding: 0.85rem;
+}
+
+.private-brief span {
+  display: block;
+  color: var(--gold);
+  font: 0.7rem Arial, sans-serif;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 0.35rem;
+}
+
+.private-brief p {
+  margin: 0;
+}
+
 .case-memo {
   width: 100%;
   min-height: 9rem;

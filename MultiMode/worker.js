@@ -137,7 +137,10 @@ export class RoomHub extends DurableObject {
     const safe = this.normalize(structuredClone(room));
     const local = safe.players.find((player) => player.name === viewer);
     const gameCase = safe.case || {};
-    safe.private = local?.role === "마피아" && gameCase.weapon ? { weapon: gameCase.weapon } : null;
+    safe.private = local?.role === "마피아" ? {
+      weapon: gameCase.weapon || "",
+      overview: [gameCase.story, gameCase.motive ? `동기: ${gameCase.motive}` : ""].filter(Boolean).join("\n")
+    } : null;
     safe.case = { id: gameCase.id, victim: gameCase.victim, scene: gameCase.scene };
     safe.players = safe.players.map((player) => ({
       ...player,

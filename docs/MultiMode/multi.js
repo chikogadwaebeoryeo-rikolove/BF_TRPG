@@ -174,6 +174,8 @@
     $("multi-case-victim").textContent = `피해자: ${gameCase.victim || "미상"}`;
     $("multi-case-weapon").textContent = room.private?.weapon || "미확인";
     $("multi-case-scene").textContent = gameCase.scene || "미상";
+    $("mafia-case-brief").classList.toggle("hidden", !room.private?.overview);
+    $("mafia-case-story").textContent = room.private?.overview || "";
     renderSpeechControl();
     renderQuestionControl();
     renderAnswerBox();
