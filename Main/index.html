@@ -66,7 +66,16 @@
           <span id="session-mode"></span>
           <h2 id="session-title"></h2>
         </div>
-        <button id="btn-new-case" class="ghost-button">새 사건</button>
+        <div class="session-actions">
+          <button id="role-profile" class="role-profile" type="button">
+            <span id="role-profile-image" class="role-profile-image">?</span>
+            <span>
+              <small id="role-profile-name">플레이어</small>
+              <strong id="role-profile-label">?</strong>
+            </span>
+          </button>
+          <button id="btn-new-case" class="ghost-button">새 사건</button>
+        </div>
       </div>
 
       <section id="solo-game" class="game-grid hidden">
@@ -75,13 +84,23 @@
             <span>사건 개요</span>
             <strong id="case-meta"></strong>
           </div>
-          <p id="case-story"></p>
+          <p id="case-victim" class="case-victim"></p>
+          <div class="case-brief-grid">
+            <div>
+              <span>증거 물품</span>
+              <strong id="case-weapon"></strong>
+            </div>
+            <div>
+              <span>현장</span>
+              <strong id="case-scene"></strong>
+            </div>
+          </div>
         </article>
 
         <article class="panel">
           <div class="section-head">
             <span>증거</span>
-            <strong>3장</strong>
+            <strong id="evidence-count">0장</strong>
           </div>
           <ul id="evidence-list" class="card-list"></ul>
         </article>
@@ -102,6 +121,7 @@
           <div id="question-list" class="question-list"></div>
           <div id="case-log" class="case-log"></div>
           <div id="final-pick" class="final-pick hidden"></div>
+          <button id="btn-reroll-hand" class="secondary-button full">패 리롤</button>
           <button id="btn-next-phase" class="primary-button full">다음 단계</button>
         </article>
       </section>
@@ -114,6 +134,7 @@
           </div>
           <p id="room-share-text"></p>
           <div id="room-url" class="code-box"></div>
+          <button id="btn-start-room" class="primary-button full">게임 시작</button>
         </article>
 
         <article class="panel">
@@ -141,8 +162,33 @@
             <span>공유 사건</span>
             <strong id="multi-case-meta"></strong>
           </div>
-          <p id="multi-case-story"></p>
+          <p id="multi-case-victim" class="case-victim"></p>
+          <div class="case-brief-grid">
+            <div>
+              <span>증거 물품</span>
+              <strong id="multi-case-weapon"></strong>
+            </div>
+            <div>
+              <span>현장</span>
+              <strong id="multi-case-scene"></strong>
+            </div>
+          </div>
+          <ul id="multi-evidence-list" class="card-list"></ul>
           <button id="btn-refresh-room" class="secondary-button">상태 새로고침</button>
+        </article>
+
+        <article class="panel wide">
+          <div class="section-head">
+            <span>발언</span>
+            <strong id="speech-state"></strong>
+          </div>
+          <div class="answer-box">
+            <label class="field">
+              <span id="speech-guide">게임 시작 후 차례대로 발언합니다.</span>
+              <textarea id="speech-input" maxlength="300" placeholder="발언 입력"></textarea>
+            </label>
+            <button id="btn-submit-speech" class="primary-button full">발언 등록</button>
+          </div>
         </article>
 
         <article class="panel wide">
@@ -152,6 +198,7 @@
           </div>
           <div id="multi-question-list" class="question-list"></div>
           <div id="multi-target-list" class="suspect-list"></div>
+          <button id="btn-reroll-multi-hand" class="secondary-button full">패 리롤</button>
           <div class="answer-box">
             <label class="field">
               <span id="answer-guide">선택된 용의자만 답변할 수 있습니다.</span>
@@ -160,6 +207,18 @@
             <button id="btn-submit-answer" class="primary-button full">답변 등록</button>
           </div>
           <div id="multi-log" class="case-log"></div>
+        </article>
+
+        <article class="panel wide">
+          <div class="section-head">
+            <span>채팅</span>
+            <strong id="chat-state"></strong>
+          </div>
+          <div id="multi-chat-log" class="case-log"></div>
+          <form id="chat-form" class="chat-form">
+            <input id="chat-input" maxlength="180" placeholder="메시지">
+            <button class="secondary-button" type="submit">전송</button>
+          </form>
         </article>
       </section>
     </section>
@@ -221,6 +280,17 @@
           <p>무료 클라우드에서 멀티 방 상태와 답변 권한을 관리합니다.</p>
         </section>
       </div>
+    </div>
+  </div>
+
+  <div id="modal-role" class="modal hidden">
+    <div class="modal-card role-modal-card">
+      <button id="btn-close-role" class="modal-close">×</button>
+      <div class="modal-head">
+        <span>Role Card</span>
+        <h2 id="role-modal-title"></h2>
+      </div>
+      <img id="role-modal-image" class="role-modal-image" alt="">
     </div>
   </div>
 

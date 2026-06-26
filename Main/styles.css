@@ -33,7 +33,8 @@ body::-webkit-scrollbar,
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -46,7 +47,8 @@ button:disabled {
   opacity: 0.45;
 }
 
-input {
+input,
+textarea {
   min-width: 0;
   border: 1px solid #34302a;
   border-radius: var(--radius);
@@ -56,7 +58,13 @@ input {
   outline: none;
 }
 
-input:focus {
+textarea {
+  min-height: 5.5rem;
+  resize: vertical;
+}
+
+input:focus,
+textarea:focus {
   border-color: var(--gold);
 }
 
@@ -313,6 +321,60 @@ body.session-open #main-title-container {
   font-size: clamp(1.35rem, 3vw, 2.1rem);
 }
 
+.session-actions {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.role-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 9rem;
+  border: 1px solid #3a332b;
+  border-radius: var(--radius);
+  background: #08090b;
+  color: var(--text);
+  padding: 0.45rem 0.65rem;
+  text-align: left;
+}
+
+.role-profile-image {
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 3.4rem;
+  border: 1px solid #3a332b;
+  border-radius: var(--radius);
+  background: #050607;
+  color: var(--gold);
+  font-weight: 900;
+  overflow: hidden;
+}
+
+.role-profile-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.role-profile small,
+.role-profile strong {
+  display: block;
+}
+
+.role-profile small {
+  color: var(--muted);
+  font: 0.68rem Arial, sans-serif;
+}
+
+.role-profile strong {
+  color: var(--gold-2);
+  margin-top: 0.15rem;
+}
+
 #session-mode {
   color: var(--gold);
   font: 0.72rem Arial, sans-serif;
@@ -349,6 +411,39 @@ body.session-open #main-title-container {
 .card-list li,
 .case-log div {
   margin-bottom: 0.65rem;
+}
+
+.case-victim {
+  margin: 0 0 0.85rem;
+  color: #f1e4cc;
+  font-size: 1.05rem;
+}
+
+.case-brief-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.case-brief-grid div {
+  border: 1px solid #302a23;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.025);
+  padding: 0.9rem;
+}
+
+.case-brief-grid span {
+  display: block;
+  color: var(--muted);
+  font: 0.7rem Arial, sans-serif;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 0.4rem;
+}
+
+.case-brief-grid strong {
+  color: var(--gold-2);
+  font-size: 1rem;
 }
 
 .suspect-list,
@@ -388,6 +483,16 @@ body.session-open #main-title-container {
   padding-top: 1rem;
   color: #b9b1a6;
   min-height: 2.5rem;
+}
+
+.chat-form {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+}
+
+.chat-form input {
+  flex: 1;
 }
 
 .full {
@@ -437,6 +542,20 @@ body.session-open #main-title-container {
   background: transparent;
   color: var(--muted);
   font-size: 1.8rem;
+}
+
+.role-modal-card {
+  width: min(100%, 24rem);
+  text-align: center;
+}
+
+.role-modal-image {
+  width: min(100%, 18rem);
+  max-height: 60vh;
+  object-fit: contain;
+  border: 1px solid #3a332b;
+  border-radius: var(--radius);
+  background: #050607;
 }
 
 .modal-head {
@@ -539,6 +658,12 @@ body.session-open #main-title-container {
   .mode-grid,
   .multi-actions,
   .session-top {
+    display: grid;
+  }
+
+  .session-actions,
+  .chat-form,
+  .case-brief-grid {
     display: grid;
   }
 

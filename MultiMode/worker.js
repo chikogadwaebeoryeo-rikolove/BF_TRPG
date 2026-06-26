@@ -6,6 +6,19 @@ const cors = {
   "Access-Control-Allow-Headers": "Content-Type"
 };
 
+const fallbackQuestions = [
+  "사건 시각 전후 10분 동안 무엇을 했나?",
+  "피해자와 마지막으로 마주친 장소는 어디였나?",
+  "누가 당신의 알리바이를 증명할 수 있나?",
+  "현장의 핵심 흔적을 언제 알았나?",
+  "피해자와 숨긴 관계가 있나?",
+  "출입구를 지나간 순서를 말하라.",
+  "알리바이의 빈 구간은 어디인가?",
+  "공개 증거 중 설명하기 어려운 것은 무엇인가?",
+  "피해자와 금전 또는 원한 문제가 있었나?",
+  "도구나 기록이 원래 있던 위치는 어디인가?"
+];
+
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
   status,
   headers: {
@@ -17,6 +30,8 @@ const json = (data, status = 200) => new Response(JSON.stringify(data), {
 
 const text = (value, max = 300) => String(value || "").trim().slice(0, max);
 const roomCode = () => Array.from({ length: 6 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]).join("");
+const shuffle = (list) => [...list].sort(() => Math.random() - 0.5);
+const hand = (questions) => shuffle(Array.isArray(questions) && questions.length ? questions.map((item) => text(item, 180)).filter(Boolean) : fallbackQuestions).slice(0, 5);
 
 async function readBody(request) {
   if (request.method === "GET") return {};
@@ -51,7 +66,7 @@ export default {
     }
     const code = text(body.code || url.searchParams.get("code"), 8).toUpperCase();
     if (!code) return json({ error: "code_required" }, 400);
-    return forward(roomStub(env, code), url.pathname, { ...body, code });
+    return forward(roomStub(env, code), url.pathname, { ...body, code, name: body.name || url.searchParams.get("name") });
   }
 };
 
@@ -66,7 +81,8 @@ export class RoomHub extends DurableObject {
 
   async save(room) {
     room.updatedAt = Date.now();
-    room.history = room.history.slice(-80);
+    room.history = (room.history || []).slice(-80);
+    room.chat = (room.chat || []).slice(-80);
     await this.ctx.storage.put("room", room);
     return room;
   }
@@ -77,10 +93,60 @@ export class RoomHub extends DurableObject {
     const body = await readBody(request);
     if (url.pathname.endsWith("/create")) return this.create(body);
     if (url.pathname.endsWith("/join")) return this.join(body);
-    if (url.pathname.endsWith("/state")) return this.state();
+    if (url.pathname.endsWith("/state")) return this.state(body);
+    if (url.pathname.endsWith("/start")) return this.start(body);
+    if (url.pathname.endsWith("/reroll")) return this.reroll(body);
     if (url.pathname.endsWith("/ask")) return this.ask(body);
     if (url.pathname.endsWith("/answer")) return this.answer(body);
+    if (url.pathname.endsWith("/speech")) return this.speech(body);
+    if (url.pathname.endsWith("/chat")) return this.chat(body);
     return json({ error: "not_found" }, 404);
+  }
+
+  normalize(room) {
+    if (!room) return null;
+    room.players ||= [];
+    room.history ||= [];
+    room.chat ||= [];
+    room.hand ||= [];
+    room.used ||= 0;
+    room.phase ||= 0;
+    room.discovered ||= [];
+    room.started = Boolean(room.started);
+    return room;
+  }
+
+  view(room, viewer) {
+    const safe = this.normalize(structuredClone(room));
+    safe.players = safe.players.map((player) => ({
+      ...player,
+      role: player.name === viewer ? player.role : player.host ? "경찰" : null
+    }));
+    return safe;
+  }
+
+  isHost(room, name) {
+    return room.players.some((player) => player.name === name && player.host);
+  }
+
+  hasPlayer(room, name) {
+    return room.players.some((player) => player.name === name);
+  }
+
+  suspects(room) {
+    return room.players.filter((player) => !player.host);
+  }
+
+  speaker(room) {
+    if (!room.speech) return null;
+    return this.suspects(room)[room.speech.index] || null;
+  }
+
+  nextClue(room) {
+    const clues = Array.isArray(room.case?.clues) ? room.case.clues : [];
+    const clue = clues.find((item) => !room.discovered.includes(item));
+    if (clue) room.discovered.push(clue);
+    return clue || "새 단서는 나오지 않았지만 진술의 모순이 기록되었습니다.";
   }
 
   async create(body) {
@@ -90,56 +156,145 @@ export class RoomHub extends DurableObject {
     if (!gameCase) return json({ error: "case_required" }, 400);
     const room = {
       code: text(body.code, 8).toUpperCase(),
-      players: [{ name, host: true }],
+      players: [{ name, host: true, role: null }],
       case: gameCase,
+      started: false,
+      phase: 0,
+      used: 0,
+      hand: [],
       active: null,
-      history: [],
+      speech: null,
+      discovered: [],
+      history: ["3명 이상 모이면 경찰이 게임을 시작할 수 있습니다."],
+      chat: [],
       updatedAt: Date.now()
     };
-    return json(await this.save(room));
+    return json(this.view(await this.save(room), name));
   }
 
   async join(body) {
-    const room = await this.data();
+    const room = this.normalize(await this.data());
     if (!room) return json({ error: "room_not_found" }, 404);
     const name = text(body.name, 16) || "플레이어";
     if (!room.players.some((player) => player.name === name)) {
+      if (room.started) return json({ error: "game_started" }, 409);
       if (room.players.length >= 15) return json({ error: "room_full" }, 409);
-      room.players.push({ name, host: false });
+      room.players.push({ name, host: false, role: null });
+      room.history.push(`${name} 참여`);
     }
-    return json(await this.save(room));
+    return json(this.view(await this.save(room), name));
   }
 
-  async state() {
+  async state(body) {
     const room = await this.data();
     if (!room) return json({ error: "room_not_found" }, 404);
-    return json(room);
+    return json(this.view(room, text(body.name, 16)));
+  }
+
+  async start(body) {
+    const room = this.normalize(await this.data());
+    if (!room) return json({ error: "room_not_found" }, 404);
+    const name = text(body.name, 16);
+    if (!this.isHost(room, name)) return json({ error: "host_only" }, 403);
+    if (room.started) return json(this.view(room, name));
+    if (room.players.length < 3) return json({ error: "need_three_players" }, 409);
+    const suspects = this.suspects(room);
+    const mafia = shuffle(suspects)[0]?.name;
+    room.players = room.players.map((player) => ({ ...player, role: player.host ? "경찰" : player.name === mafia ? "마피아" : "시민" }));
+    room.started = true;
+    room.phase = 0;
+    room.used = 0;
+    room.hand = hand(body.questions);
+    room.discovered = [];
+    room.active = null;
+    room.speech = suspects.length ? { type: "opening", index: 0 } : null;
+    room.history.push("게임 시작");
+    room.history.push("시작 발언을 진행합니다.");
+    return json(this.view(await this.save(room), name));
+  }
+
+  async reroll(body) {
+    const room = this.normalize(await this.data());
+    if (!room) return json({ error: "room_not_found" }, 404);
+    const name = text(body.name, 16);
+    if (!this.isHost(room, name)) return json({ error: "host_only" }, 403);
+    if (!room.started || room.speech || room.active || room.phase > 1) return json({ error: "bad_state" }, 409);
+    if (room.used >= 3) return json({ error: "hand_locked" }, 409);
+    room.hand = hand(body.questions);
+    room.history.push("경찰이 질문 패를 리롤했습니다.");
+    return json(this.view(await this.save(room), name));
   }
 
   async ask(body) {
-    const room = await this.data();
+    const room = this.normalize(await this.data());
     if (!room) return json({ error: "room_not_found" }, 404);
     const name = text(body.name, 16);
     const question = text(body.question, 180);
     const target = text(body.target, 16);
-    const host = room.players.some((player) => player.name === name && player.host);
-    const targetPlayer = room.players.some((player) => player.name === target);
-    if (!host) return json({ error: "host_only" }, 403);
-    if (!question || !targetPlayer) return json({ error: "bad_question" }, 400);
+    if (!room.started) return json({ error: "not_started" }, 409);
+    if (!this.isHost(room, name)) return json({ error: "host_only" }, 403);
+    if (room.speech || room.active || room.phase > 1 || room.used >= 3) return json({ error: "bad_state" }, 409);
+    const targetPlayer = room.players.find((player) => player.name === target);
+    if (!question || !targetPlayer || targetPlayer.host || !room.hand.includes(question)) return json({ error: "bad_question" }, 400);
+    room.used += 1;
+    room.hand = room.hand.filter((item) => item !== question);
     room.active = { question, target };
-    return json(await this.save(room));
+    return json(this.view(await this.save(room), name));
   }
 
   async answer(body) {
-    const room = await this.data();
+    const room = this.normalize(await this.data());
     if (!room) return json({ error: "room_not_found" }, 404);
     const name = text(body.name, 16);
     const reply = text(body.text, 300);
     if (!room.active || room.active.target !== name) return json({ error: "target_only" }, 403);
     if (!reply) return json({ error: "empty_answer" }, 400);
+    const clue = this.nextClue(room);
     room.history.push(`${room.active.target} 질문: ${room.active.question}`);
     room.history.push(`답변: ${reply}`);
+    room.history.push(`단서 발견: ${clue}`);
     room.active = null;
-    return json(await this.save(room));
+    if (room.used >= 3) {
+      if (room.phase === 0) {
+        room.phase = 1;
+        room.used = 0;
+        room.hand = hand(body.questions);
+        room.history.push("2차 질문을 시작합니다.");
+      } else if (room.phase === 1) {
+        room.phase = 2;
+        room.hand = [];
+        room.speech = this.suspects(room).length ? { type: "closing", index: 0 } : null;
+        room.history.push("마지막 발언을 진행합니다.");
+      }
+    }
+    return json(this.view(await this.save(room), name));
+  }
+
+  async speech(body) {
+    const room = this.normalize(await this.data());
+    if (!room) return json({ error: "room_not_found" }, 404);
+    const name = text(body.name, 16);
+    const message = text(body.text, 300);
+    const speaker = this.speaker(room);
+    if (!speaker || speaker.name !== name) return json({ error: "speaker_only" }, 403);
+    if (!message) return json({ error: "empty_speech" }, 400);
+    room.history.push(`${room.speech.type === "opening" ? "시작 발언" : "마지막 발언"} ${name}: ${message}`);
+    room.speech.index += 1;
+    if (!this.speaker(room)) {
+      room.history.push(room.speech.type === "opening" ? "질문을 시작합니다." : "마지막 발언이 끝났습니다.");
+      room.speech = null;
+    }
+    return json(this.view(await this.save(room), name));
+  }
+
+  async chat(body) {
+    const room = this.normalize(await this.data());
+    if (!room) return json({ error: "room_not_found" }, 404);
+    const name = text(body.name, 16);
+    const message = text(body.text, 180);
+    if (!this.hasPlayer(room, name)) return json({ error: "player_only" }, 403);
+    if (!message) return json({ error: "empty_chat" }, 400);
+    room.chat.push(`${name}: ${message}`);
+    return json(this.view(await this.save(room), name));
   }
 }

@@ -33,7 +33,7 @@ copyFile(path.join(root, "index.html"), path.join(out, "index.html"));
 copyFile(path.join(root, "index.html"), path.join(out, "404.html"));
 copyDir(path.join(root, "Main"), path.join(out, "Main"));
 copyDir(path.join(root, "SoloMode"), path.join(out, "SoloMode"));
-copyDir(path.join(root, "MultiMode"), path.join(out, "MultiMode"), (entry) => entry.isDirectory() || keep.has(entry.name));
+copyDir(path.join(root, "MultiMode"), path.join(out, "MultiMode"), (entry) => entry.isFile() && keep.has(entry.name));
 copyDir(path.join(root, "Data"), path.join(out, "Data"));
 copyDir(path.join(root, "cards"), path.join(out, "cards"));
 copyDir(path.join(root, "역할카드"), path.join(out, "역할카드"));
