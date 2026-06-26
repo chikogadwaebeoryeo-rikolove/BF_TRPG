@@ -1,0 +1,29 @@
+.answer-box {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+#multi-answer-input {
+  min-height: 5.5rem;
+  resize: vertical;
+  border: 1px solid #34302a;
+  border-radius: var(--radius);
+  background: #050607;
+  color: var(--text);
+  padding: 0.85rem;
+  outline: none;
+}
+
+#multi-answer-input:focus {
+  border-color: var(--gold);
+}
+
+#multi-answer-input:disabled {
+  color: #6f685f;
+  background: #08090b;
+}
+
+#multi-question-state {
+  color: var(--cyan);
+}

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Omega Byte</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="../SoloMode/solo.css">
+  <link rel="stylesheet" href="../MultiMode/multi.css">
+</head>
+<body>
+  <canvas id="particle-canvas"></canvas>
+  <div id="intro-screen"></div>
+
+  <header id="main-title-container">
+    <h1 id="brand-title">OMEGA BYTE</h1>
+  </header>
+
+  <main id="main-content">
+    <section id="lobby-screen" class="screen screen-visible">
+      <div class="genre">추리 · 미스터리 · 퍼즐 · 보드게임 · TRPG</div>
+      <p class="players">SOLO 1 / MULTI 3-15 PLAYERS</p>
+
+      <section class="panel lobby-panel">
+        <div class="mode-grid">
+          <button id="btn-solo" class="mode-button active">솔로모드</button>
+          <button id="btn-multi" class="mode-button">멀티모드</button>
+        </div>
+
+        <div id="mode-briefing" class="briefing">
+          <div>
+            <span id="mode-title"></span>
+            <small id="mode-subtitle"></small>
+          </div>
+          <p id="mode-summary"></p>
+          <p id="mode-cards"></p>
+          <ul id="mode-flow"></ul>
+        </div>
+
+        <div id="multi-panel" class="multi-panel hidden">
+          <label class="field">
+            <span>플레이어 이름</span>
+            <input id="player-name-input" maxlength="16" placeholder="플레이어">
+          </label>
+          <div class="multi-actions">
+            <button id="btn-create-room" class="primary-button">방 만들기</button>
+            <form id="join-room-form">
+              <input id="room-code-input" maxlength="6" placeholder="코드">
+              <button class="secondary-button" type="submit">참여</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="footer-actions">
+          <button id="btn-rules" class="ghost-button">규칙 확인</button>
+          <button id="btn-dev-logs" class="ghost-button">개발 과정</button>
+        </div>
+      </section>
+    </section>
+
+    <section id="session-screen" class="screen hidden">
+      <div class="session-top">
+        <button id="btn-back-lobby" class="ghost-button">로비</button>
+        <div>
+          <span id="session-mode"></span>
+          <h2 id="session-title"></h2>
+        </div>
+        <button id="btn-new-case" class="ghost-button">새 사건</button>
+      </div>
+
+      <section id="solo-game" class="game-grid hidden">
+        <article class="panel wide">
+          <div class="section-head">
+            <span>사건 개요</span>
+            <strong id="case-meta"></strong>
+          </div>
+          <p id="case-story"></p>
+        </article>
+
+        <article class="panel">
+          <div class="section-head">
+            <span>증거</span>
+            <strong>3장</strong>
+          </div>
+          <ul id="evidence-list" class="card-list"></ul>
+        </article>
+
+        <article class="panel">
+          <div class="section-head">
+            <span>용의자</span>
+            <strong id="suspect-count"></strong>
+          </div>
+          <div id="suspect-list" class="suspect-list"></div>
+        </article>
+
+        <article class="panel wide">
+          <div class="section-head">
+            <span id="phase-title"></span>
+            <strong id="phase-count"></strong>
+          </div>
+          <div id="question-list" class="question-list"></div>
+          <div id="case-log" class="case-log"></div>
+          <div id="final-pick" class="final-pick hidden"></div>
+          <button id="btn-next-phase" class="primary-button full">다음 단계</button>
+        </article>
+      </section>
+
+      <section id="multi-room" class="game-grid hidden">
+        <article class="panel wide">
+          <div class="section-head">
+            <span>방 코드</span>
+            <strong id="room-code-label"></strong>
+          </div>
+          <p id="room-share-text"></p>
+          <div id="room-url" class="code-box"></div>
+        </article>
+
+        <article class="panel">
+          <div class="section-head">
+            <span>참여자</span>
+            <strong id="room-player-count"></strong>
+          </div>
+          <ul id="room-player-list" class="card-list"></ul>
+        </article>
+
+        <article class="panel">
+          <div class="section-head">
+            <span>멀티 규칙</span>
+            <strong>경찰 · 시민 · 마피아</strong>
+          </div>
+          <ul class="card-list">
+            <li>경찰 1명은 공개 역할입니다.</li>
+            <li>경찰을 제외한 플레이어는 용의자카드를 받습니다.</li>
+            <li>질문카드는 1차 3개, 2차 3개만 사용합니다.</li>
+          </ul>
+        </article>
+
+        <article class="panel wide">
+          <div class="section-head">
+            <span>공유 사건</span>
+            <strong id="multi-case-meta"></strong>
+          </div>
+          <p id="multi-case-story"></p>
+          <button id="btn-refresh-room" class="secondary-button">상태 새로고침</button>
+        </article>
+
+        <article class="panel wide">
+          <div class="section-head">
+            <span>질문 진행</span>
+            <strong id="multi-question-state"></strong>
+          </div>
+          <div id="multi-question-list" class="question-list"></div>
+          <div id="multi-target-list" class="suspect-list"></div>
+          <div class="answer-box">
+            <label class="field">
+              <span id="answer-guide">선택된 용의자만 답변할 수 있습니다.</span>
+              <textarea id="multi-answer-input" maxlength="300" placeholder="답변 입력"></textarea>
+            </label>
+            <button id="btn-submit-answer" class="primary-button full">답변 등록</button>
+          </div>
+          <div id="multi-log" class="case-log"></div>
+        </article>
+      </section>
+    </section>
+  </main>
+
+  <div id="modal-rules" class="modal hidden">
+    <div class="modal-card">
+      <button id="btn-close-rules" class="modal-close">×</button>
+      <div class="modal-head">
+        <span>Rule Case File</span>
+        <h2 id="rules-title"></h2>
+        <p id="rules-subtitle"></p>
+      </div>
+      <div class="tab-row">
+        <button data-rule-tab="solo" class="tab-button active">솔로모드</button>
+        <button data-rule-tab="multi" class="tab-button">멀티모드</button>
+      </div>
+      <p id="rules-summary" class="modal-summary"></p>
+      <div class="rules-grid">
+        <div><span>Players</span><p id="rules-players"></p></div>
+        <div><span>Team</span><p id="rules-team"></p></div>
+        <div><span>Cards</span><p id="rules-cards"></p></div>
+      </div>
+      <div class="rules-columns">
+        <section>
+          <h3>진행 순서</h3>
+          <ol id="rules-flow"></ol>
+        </section>
+        <section>
+          <h3>핵심 제한</h3>
+          <ul id="rules-limits"></ul>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-dev-logs" class="modal hidden">
+    <div class="modal-card">
+      <button id="btn-close-modal" class="modal-close">×</button>
+      <div class="modal-head">
+        <span>Project Case File</span>
+        <h2>OMEGA BYTE: DEV LOGS</h2>
+      </div>
+      <div class="dev-grid">
+        <section>
+          <h3>HTML</h3>
+          <p>로비, 게임 화면, 규칙, 방 코드 UI 구조를 담당합니다.</p>
+        </section>
+        <section>
+          <h3>CSS</h3>
+          <p>모달, 카드형 게임 화면, 반응형 레이아웃을 담당합니다.</p>
+        </section>
+        <section>
+          <h3>JavaScript</h3>
+          <p>솔로 사건 진행, 멀티 방 코드, API 연결, 로비 상태를 담당합니다.</p>
+        </section>
+        <section>
+          <h3>Cloud Worker</h3>
+          <p>무료 클라우드에서 멀티 방 상태와 답변 권한을 관리합니다.</p>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"><span id="toast-text"></span></div>
+  <script src="./app.js" defer></script>
+  <script src="../SoloMode/solo.js" defer></script>
+  <script src="../MultiMode/config.js" defer></script>
+  <script src="../MultiMode/multi.js" defer></script>
+</body>
+</html>
