@@ -52,7 +52,7 @@
   }
 
   function start() {
-    const { pick, state, setMode, showSession, setRole, toast } = window.App;
+    const { $, pick, state, setMode, showSession, setRole, toast } = window.App;
     solo.caseInfo = pick(state.cases);
     solo.suspects = buildSuspects(solo.caseInfo);
     solo.phase = 0;
@@ -65,6 +65,7 @@
     setMode("solo");
     setRole("경찰", "플레이어", true);
     showSession("solo");
+    $("case-memo").value = "";
     render();
     toast("솔로모드를 시작합니다.");
   }
@@ -75,7 +76,6 @@
     $("session-title").textContent = `사건 경위 ${gameCase.id}`;
     $("case-meta").textContent = "초기 공개 정보";
     $("case-victim").textContent = `피해자: ${gameCase.victim || "미상"}`;
-    $("case-weapon").textContent = gameCase.weapon || "미상";
     $("case-scene").textContent = gameCase.scene || "미상";
     $("suspect-count").textContent = `${solo.suspects.length}명`;
     $("phase-title").textContent = ["1차 질문", "2차 질문", "마지막 발언", "범인 지목", "결과"][solo.phase] || "수사";
