@@ -24,8 +24,8 @@
       cards: "현장카드 1장, 증거카드 3장, 용의자카드 5장, 질문카드만 사용합니다.",
       players: "1 PLAYER",
       team: "플레이어 vs 사건",
-      flow: ["사건 공개", "질문 선택", "용의자 선택", "답변 확인", "범인 지목"],
-      limits: ["역할카드는 직접 사용하지 않습니다.", "질문은 총 6개입니다.", "마지막 발언 이후에는 질문할 수 없습니다."]
+      flow: ["역할 공개", "시작 발언", "질문 선택", "용의자 선택", "범인 지목"],
+      limits: ["질문 전 단서는 공개되지 않습니다.", "패 3개를 쓰기 전에는 리롤할 수 있습니다.", "마지막 발언 이후에는 질문할 수 없습니다."]
     },
     multi: {
       title: "멀티모드",
@@ -34,8 +34,8 @@
       cards: "현장카드, 증거카드, 용의자카드, 질문카드, 역할카드를 사용합니다.",
       players: "3-15 PLAYERS",
       team: "경찰·시민 팀 vs 마피아 팀",
-      flow: ["방 생성 또는 코드 참여", "질문 선택", "용의자 선택", "선택된 용의자 답변", "경찰 최종 지목"],
-      limits: ["경찰만 질문카드를 사용합니다.", "선택된 용의자만 답변할 수 있습니다.", "다른 컴퓨터도 같은 웹 주소와 방 코드로 접속합니다."]
+      flow: ["방 생성 또는 코드 참여", "3명 이상 게임 시작", "용의자 시작 발언", "질문과 답변", "마지막 발언"],
+      limits: ["경찰만 질문카드를 사용합니다.", "선택된 용의자만 답변할 수 있습니다.", "단서는 질문 답변으로만 공개됩니다."]
     }
   };
   const questions = [
@@ -52,7 +52,12 @@
   ];
   const names = ["오지훈", "김태윤", "정수빈", "송하린", "강도윤", "한유라", "문세진", "백지아", "서민재", "유하늘"];
   const jobs = ["간호사", "기자", "경찰", "회계사", "변호사", "상담원", "경비원", "프로그래머", "연예인", "약사", "교사", "배달원"];
-  const state = { mode: "solo", cases: fallbackCases, roomTimer: null, toastTimer: null };
+  const roleDefs = {
+    경찰: { title: "경찰", image: "../역할카드/경찰.jpg" },
+    시민: { title: "시민", image: "../역할카드/시민.jpg" },
+    마피아: { title: "마피아", image: "../역할카드/마피아.jpg" }
+  };
+  const state = { mode: "solo", cases: fallbackCases, roomTimer: null, toastTimer: null, role: null, playerName: "플레이어", roleRevealed: false };
 
   function toast(text) {
     $("toast-text").textContent = text;
@@ -127,6 +132,41 @@
     if (!$$(".modal").some((item) => !item.classList.contains("hidden"))) document.body.classList.remove("modal-open");
   }
 
+  function renderRoleProfile() {
+    $("role-profile-name").textContent = state.playerName;
+    $("role-profile-label").textContent = state.roleRevealed && state.role ? roleDefs[state.role].title : "?";
+    $("role-profile-image").replaceChildren();
+    if (state.roleRevealed && state.role) {
+      const img = document.createElement("img");
+      img.src = roleDefs[state.role].image;
+      img.alt = roleDefs[state.role].title;
+      $("role-profile-image").appendChild(img);
+    } else {
+      $("role-profile-image").textContent = "?";
+    }
+  }
+
+  function setRole(role, name = "플레이어", showNow = false) {
+    state.role = roleDefs[role] ? role : null;
+    state.playerName = name || "플레이어";
+    state.roleRevealed = false;
+    renderRoleProfile();
+    if (showNow && state.role) showRoleModal(false);
+  }
+
+  function showRoleModal(revealProfile = true) {
+    if (!state.role) return;
+    const role = roleDefs[state.role];
+    if (revealProfile) {
+      state.roleRevealed = true;
+      renderRoleProfile();
+    }
+    $("role-modal-title").textContent = role.title;
+    $("role-modal-image").src = role.image;
+    $("role-modal-image").alt = role.title;
+    openModal($("modal-role"));
+  }
+
   function renderRules(mode) {
     const profile = profiles[mode];
     $("rules-title").textContent = `${profile.title} 규칙`;
@@ -184,8 +224,17 @@
     $("btn-back-lobby").addEventListener("click", showLobby);
     $("btn-new-case").addEventListener("click", () => state.mode === "solo" ? window.SoloMode.start() : window.MultiMode.refreshRoom());
     $("btn-next-phase").addEventListener("click", () => window.SoloMode.nextPhase());
+    $("btn-reroll-hand").addEventListener("click", () => window.SoloMode.rerollHand());
     $("btn-refresh-room").addEventListener("click", () => window.MultiMode.refreshRoom());
+    $("btn-start-room").addEventListener("click", () => window.MultiMode.startRoom());
+    $("btn-reroll-multi-hand").addEventListener("click", () => window.MultiMode.rerollHand());
+    $("btn-submit-speech").addEventListener("click", () => window.MultiMode.submitSpeech());
     $("btn-submit-answer").addEventListener("click", () => window.MultiMode.submitAnswer());
+    $("chat-form").addEventListener("submit", (event) => {
+      event.preventDefault();
+      window.MultiMode.submitChat();
+    });
+    $("role-profile").addEventListener("click", showRoleModal);
     $("btn-rules").addEventListener("click", () => {
       renderRules(state.mode);
       openModal($("modal-rules"));
@@ -193,6 +242,7 @@
     $("btn-dev-logs").addEventListener("click", () => openModal($("modal-dev-logs")));
     $("btn-close-rules").addEventListener("click", () => closeModal($("modal-rules")));
     $("btn-close-modal").addEventListener("click", () => closeModal($("modal-dev-logs")));
+    $("btn-close-role").addEventListener("click", () => closeModal($("modal-role")));
     $$(".modal").forEach((modal) => modal.addEventListener("click", (event) => {
       if (event.target === modal) closeModal(modal);
     }));
@@ -205,6 +255,7 @@
   async function init() {
     initParticles();
     setMode("solo");
+    setRole(null, "플레이어");
     await loadCases();
     bind();
     setTimeout(() => $("intro-screen").classList.add("hide"), 2100);
@@ -217,6 +268,6 @@
     }
   }
 
-  window.App = { $, $$, pick, profiles, questions, names, jobs, state, toast, getJson, fillList, setMode, showLobby, showSession };
+  window.App = { $, $$, pick, profiles, questions, names, jobs, roleDefs, state, toast, getJson, fillList, setMode, showLobby, showSession, setRole, showRoleModal, renderRoleProfile };
   document.addEventListener("DOMContentLoaded", init);
 })();
