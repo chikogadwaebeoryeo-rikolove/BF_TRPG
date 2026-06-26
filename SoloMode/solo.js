@@ -1,5 +1,5 @@
 (() => {
-  const solo = { caseInfo: null, suspects: [], phase: 0, used: 0, selected: null, log: [], hand: [], clueIndex: 0 };
+  const solo = { caseInfo: null, suspects: [], phase: 0, used: 0, selected: null, log: [], hand: [], clueIndex: 0, rerolls: 0 };
 
   function shuffle(list) {
     return [...list].sort(() => Math.random() - 0.5);
@@ -11,8 +11,9 @@
 
   function buildSuspects(gameCase) {
     const { pick, names, jobs } = window.App;
-    const pool = jobs.filter((job) => job !== gameCase.culprit);
-    const list = [{ name: pick(names), job: gameCase.culprit, culprit: true }];
+    const culpritJob = jobs.includes(gameCase.culprit) ? gameCase.culprit : pick(jobs);
+    const pool = jobs.filter((job) => job !== culpritJob);
+    const list = [{ name: pick(names), job: culpritJob, culprit: true }];
     while (list.length < 5) {
       const job = pick(pool);
       if (!list.some((suspect) => suspect.job === job)) list.push({ name: pick(names), job, culprit: false });
@@ -60,6 +61,7 @@
     solo.selected = null;
     solo.log = [];
     solo.clueIndex = 0;
+    solo.rerolls = 0;
     drawHand();
     openingLines();
     setMode("solo");
@@ -102,7 +104,8 @@
     const box = $("question-list");
     box.replaceChildren();
     $("btn-reroll-hand").classList.toggle("hidden", solo.phase > 1);
-    $("btn-reroll-hand").disabled = solo.phase > 1 || solo.used >= 3;
+    $("btn-reroll-hand").textContent = `패 리롤 (${solo.rerolls}/3)`;
+    $("btn-reroll-hand").disabled = solo.phase > 1 || solo.used >= 3 || solo.rerolls >= 3;
     $("btn-next-phase").classList.toggle("hidden", solo.phase === 3 || solo.phase === 4);
     $("btn-next-phase").textContent = solo.phase === 2 ? "범인 지목" : "다음 단계";
     if (solo.phase > 1) return;
@@ -173,9 +176,11 @@
     const { toast } = window.App;
     if (solo.phase > 1) return;
     if (solo.used >= 3) return toast("패 3개를 모두 사용해 리롤할 수 없습니다.");
+    if (solo.rerolls >= 3) return toast("패 리롤은 게임 전체에서 3번까지만 가능합니다.");
     solo.selected = null;
+    solo.rerolls += 1;
     drawHand();
-    solo.log.push("질문 패를 리롤했습니다.");
+    solo.log.push(`질문 패를 리롤했습니다. (${solo.rerolls}/3)`);
     render();
   }
 
@@ -234,8 +239,9 @@
   }
 
   function revealResult(suspect) {
+    const answer = solo.suspects.find((item) => item.culprit);
     solo.phase = 4;
-    solo.log.push(suspect.culprit ? "정답입니다. 수사 성공." : `오답입니다. 실제 범인은 ${solo.caseInfo.culprit}입니다.`);
+    solo.log.push(suspect.culprit ? "정답입니다. 수사 성공." : `오답입니다. 실제 범인은 ${answer.name}(${answer.job})입니다.`);
     solo.log.push(solo.caseInfo.truth);
     render();
   }

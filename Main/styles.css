@@ -416,6 +416,48 @@ body.session-open #main-title-container {
   margin-bottom: 0.65rem;
 }
 
+.player-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+}
+
+#room-player-list {
+  padding-left: 0;
+  list-style: none;
+}
+
+.player-main {
+  min-width: 0;
+}
+
+.player-main strong,
+.player-main span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.player-main strong {
+  color: var(--gold-2);
+}
+
+.player-main span {
+  color: #b9b1a6;
+  font-size: 0.86rem;
+}
+
+.kick-button {
+  min-height: 2.1rem;
+  border: 1px solid #4a2d2b;
+  border-radius: var(--radius);
+  background: rgba(255, 113, 106, 0.08);
+  color: var(--danger);
+  padding: 0.35rem 0.7rem;
+  white-space: nowrap;
+}
+
 .case-victim {
   margin: 0 0 0.85rem;
   color: #f1e4cc;
@@ -741,5 +783,10 @@ body.session-open #main-title-container {
   .suspect-card,
   .question-card {
     overflow-wrap: anywhere;
+  }
+
+  .player-row {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
