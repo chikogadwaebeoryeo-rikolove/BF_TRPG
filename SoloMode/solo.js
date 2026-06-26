@@ -1,5 +1,5 @@
 (() => {
-  const solo = { caseInfo: null, suspects: [], phase: 0, used: 0, selected: null, log: [], hand: [], discovered: [] };
+  const solo = { caseInfo: null, suspects: [], phase: 0, used: 0, selected: null, log: [], hand: [], clueIndex: 0 };
 
   function shuffle(list) {
     return [...list].sort(() => Math.random() - 0.5);
@@ -52,36 +52,34 @@
   }
 
   function start() {
-    const { $, pick, state, setMode, showSession, setRole, toast } = window.App;
+    const { pick, state, setMode, showSession, setRole, toast } = window.App;
     solo.caseInfo = pick(state.cases);
     solo.suspects = buildSuspects(solo.caseInfo);
     solo.phase = 0;
     solo.used = 0;
     solo.selected = null;
     solo.log = [];
-    solo.discovered = [];
+    solo.clueIndex = 0;
     drawHand();
     openingLines();
     setMode("solo");
     setRole("경찰", "플레이어", true);
     showSession("solo");
-    $("case-memo").value = "";
     render();
     toast("솔로모드를 시작합니다.");
   }
 
   function render() {
-    const { $, fillList } = window.App;
+    const { $ } = window.App;
     const gameCase = solo.caseInfo;
     $("session-title").textContent = `사건 경위 ${gameCase.id}`;
     $("case-meta").textContent = "초기 공개 정보";
     $("case-victim").textContent = `피해자: ${gameCase.victim || "미상"}`;
+    $("case-weapon").textContent = gameCase.weapon || "미상";
     $("case-scene").textContent = gameCase.scene || "미상";
     $("suspect-count").textContent = `${solo.suspects.length}명`;
     $("phase-title").textContent = ["1차 질문", "2차 질문", "마지막 발언", "범인 지목", "결과"][solo.phase] || "수사";
     $("phase-count").textContent = solo.phase < 2 ? `${solo.used}/3` : "";
-    $("evidence-count").textContent = `${solo.discovered.length}장`;
-    fillList($("evidence-list"), solo.discovered.length ? solo.discovered : ["아직 발견된 단서가 없습니다."]);
     renderSuspects();
     renderQuestions();
     renderLog();
@@ -129,9 +127,35 @@
 
   function nextClue() {
     const clues = solo.caseInfo.clues || [];
-    const clue = clues.find((item) => !solo.discovered.includes(item));
-    if (clue) solo.discovered.push(clue);
-    return clue || "새 단서는 나오지 않았지만 진술의 모순이 기록되었습니다.";
+    const clue = clues[solo.clueIndex % Math.max(clues.length, 1)];
+    solo.clueIndex += 1;
+    return clue || "";
+  }
+
+  function clueTopic(clue) {
+    const value = String(clue || "");
+    if (/CCTV|카메라|영상|녹화|사진/.test(value)) return "기록된 장면";
+    if (/휴대폰|메시지|통화|녹음|채팅/.test(value)) return "연락 기록";
+    if (/서버|로그|전산|파일|클라우드|백업/.test(value)) return "남은 기록";
+    if (/결제|주문|계좌|영수증|돈|금전/.test(value)) return "돈의 흐름";
+    if (/출입|카드|도어락|차량|GPS|동선/.test(value)) return "이동 경로";
+    if (/가방|지문|섬유|흔적|자국|물건/.test(value)) return "현장 흔적";
+    return "확인해야 할 부분";
+  }
+
+  function indirectAnswer(suspect, clue) {
+    const topic = clueTopic(clue);
+    return window.App.pick(suspect.culprit ? [
+      `${topic}만으로 단정하기는 어렵습니다. 저는 평소와 크게 다르지 않았습니다.`,
+      `그 부분은 오해가 섞였을 수 있습니다. 지금 말할 수 있는 건 제 동선뿐입니다.`,
+      `${topic}을 다시 보면 다른 해석도 가능할 겁니다. 제가 먼저 설명할 일은 아닙니다.`,
+      `기억이 선명하지 않습니다. 다만 사건과 직접 엮일 만한 행동은 없었습니다.`
+    ] : [
+      `${topic}을 확인하면 제 말과 크게 어긋나지는 않을 겁니다.`,
+      `제가 본 건 제한적입니다. 그 부분은 기록을 맞춰 보는 게 낫습니다.`,
+      `그 시간대는 평소처럼 움직였습니다. 특별히 숨길 일은 없습니다.`,
+      `${topic} 쪽은 제가 단정할 수 없지만, 제 설명은 처음과 같습니다.`
+    ]);
   }
 
   function answerQuestion(suspect) {
@@ -139,7 +163,7 @@
     const clue = nextClue();
     solo.used += 1;
     solo.log.push(`${suspect.name}(${suspect.job}) 질문: ${solo.selected.text}`);
-    solo.log.push(`답변: ${clue}`);
+    solo.log.push(`답변: ${indirectAnswer(suspect, clue)}`);
     solo.hand.splice(solo.selected.index, 1);
     solo.selected = null;
     render();

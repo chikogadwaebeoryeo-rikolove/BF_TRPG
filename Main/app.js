@@ -20,8 +20,8 @@
     solo: {
       title: "솔로모드",
       subtitle: "1인 수사",
-      summary: "혼자 현장, 증거, 용의자 진술을 비교해 범인을 지목합니다.",
-      cards: "현장카드 1장, 증거카드 3장, 용의자카드 5장, 질문카드만 사용합니다.",
+      summary: "혼자 현장, 무기, 용의자 진술을 비교해 범인을 지목합니다.",
+      cards: "현장카드 1장, 무기카드 1장, 용의자카드 5장, 질문카드만 사용합니다.",
       players: "1 PLAYER",
       team: "플레이어 vs 사건",
       flow: ["역할 공개", "시작 발언", "질문 선택", "용의자 선택", "범인 지목"],
@@ -31,7 +31,7 @@
       title: "멀티모드",
       subtitle: "3-15인 방 코드",
       summary: "방 코드로 클라우드 서버에 접속한 플레이어가 경찰, 시민, 마피아 역할로 사건을 진행합니다.",
-      cards: "현장카드, 증거카드, 용의자카드, 질문카드, 역할카드를 사용합니다.",
+      cards: "현장카드, 무기카드, 용의자카드, 질문카드, 역할카드를 사용합니다.",
       players: "3-15 PLAYERS",
       team: "경찰·시민 팀 vs 마피아 팀",
       flow: ["방 생성 또는 코드 참여", "3명 이상 게임 시작", "용의자 시작 발언", "질문과 답변", "마지막 발언"],
@@ -46,7 +46,7 @@
     "피해자와 숨긴 관계가 있나?",
     "출입구를 지나간 순서를 말하라.",
     "알리바이의 빈 구간은 어디인가?",
-    "공개 증거 중 설명하기 어려운 것은 무엇인가?",
+    "공개 기록 중 설명하기 어려운 것은 무엇인가?",
     "피해자와 금전 또는 원한 문제가 있었나?",
     "도구나 기록이 원래 있던 위치는 어디인가?"
   ];
@@ -213,7 +213,20 @@
     draw();
   }
 
+  function bindMemo(id) {
+    const box = $(id);
+    const key = `bf-trpg:${id}`;
+    try {
+      box.value = localStorage.getItem(key) || "";
+      box.addEventListener("input", () => localStorage.setItem(key, box.value));
+    } catch (error) {
+      box.value = "";
+    }
+  }
+
   function bind() {
+    bindMemo("case-memo");
+    bindMemo("multi-case-memo");
     $("btn-solo").addEventListener("click", () => window.SoloMode.start());
     $("btn-multi").addEventListener("click", () => setMode("multi"));
     $("btn-create-room").addEventListener("click", () => window.MultiMode.createRoom());
