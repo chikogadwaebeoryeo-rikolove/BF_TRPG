@@ -24,3 +24,11 @@ if (-not $remote) {
 & $git add .
 & $git commit -m "Deploy BF_TRPG pages and cloud multiplayer" 2>$null
 & $git push -u origin main
+
+$branch = (& $git branch --list gh-pages)
+if ($branch) {
+  & $git branch -D gh-pages
+}
+
+& $git subtree split --prefix docs -b gh-pages
+& $git push -f origin gh-pages

@@ -24,12 +24,16 @@ GitHub Pages 주소:
 https://chikogadwaebeoryeo-rikolove.github.io/BF_TRPG/
 ```
 
+GitHub Pages 배포:
+
+```powershell
+.\Deploy\deploy-pages.ps1
+```
+
 Cloudflare Worker 배포:
 
 ```powershell
-cd MultiMode
-npm install
-npm run deploy
+.\Deploy\deploy-worker.ps1
 ```
 
 배포 후 출력되는 Worker URL을 `MultiMode/config.js`에 넣는다.
