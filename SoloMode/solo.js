@@ -1,5 +1,5 @@
 (() => {
-  const solo = { caseInfo: null, suspects: [], phase: 0, used: 0, selected: null, log: [], hand: [], clueIndex: 0, rerolls: 0 };
+  const solo = { caseInfo: null, suspects: [], phase: 0, used: 0, selected: null, log: [], hand: [], rerolls: 0 };
 
   function shuffle(list) {
     return [...list].sort(() => Math.random() - 0.5);
@@ -11,26 +11,29 @@
 
   function buildSuspects(gameCase) {
     const { pick, names, jobs } = window.App;
+    const namePool = shuffle(names);
+    const nextName = () => namePool.shift() || pick(names);
     const culpritJob = jobs.includes(gameCase.culprit) ? gameCase.culprit : pick(jobs);
     const pool = jobs.filter((job) => job !== culpritJob);
-    const list = [{ name: pick(names), job: culpritJob, culprit: true }];
+    const list = [{ name: nextName(), job: culpritJob, culprit: true }];
     while (list.length < 5) {
       const job = pick(pool);
-      if (!list.some((suspect) => suspect.job === job)) list.push({ name: pick(names), job, culprit: false });
+      if (!list.some((suspect) => suspect.job === job)) list.push({ name: nextName(), job, culprit: false });
     }
     return shuffle(list);
   }
 
-  function neutralLine() {
-    return window.App.pick([
-      "사건 전후로 평소 일정에서 크게 벗어난 일은 없었습니다.",
-      "피해자와는 필요한 말만 나눴고 특별히 다툰 기억은 없습니다.",
-      "제 위치는 다른 사람들과 기록을 맞춰 보면 확인될 겁니다.",
-      "그 시간대에는 주변이 어수선해서 세부 순서는 다시 확인해야 합니다.",
-      "제가 본 것은 많지 않지만 질문을 받으면 아는 만큼 말하겠습니다.",
-      "피해자를 마지막으로 본 시점은 정확히 정리해서 말씀드리겠습니다.",
-      "현장 근처에 있던 이유는 제 업무와 관련된 일이었습니다.",
-      "특별히 숨길 일은 없고, 기억나는 범위에서 답하겠습니다."
+  function alibiLine(suspect) {
+    const scene = solo.caseInfo.scene || "현장";
+    const victim = solo.caseInfo.victim || "피해자";
+    return suspect.culprit ? window.App.pick([
+      `사건 시각에는 ${scene} 근처에 잠깐 있었지만 ${victim}와 직접 마주치지는 않았다고 주장합니다. 확인자는 뚜렷하지 않습니다.`,
+      `${scene} 주변을 지나간 일은 인정하지만 사건 시각에는 개인 용무를 보고 있었다고 말합니다. 시간 설명이 조금 비어 있습니다.`,
+      `${victim}와는 사건 전에 짧게 만났을 뿐이라며, 이후 동선은 기록으로 확인될 것이라고 주장합니다.`
+    ]) : window.App.pick([
+      `사건 시각에는 ${scene}과 떨어진 곳에서 ${suspect.job} 관련 일을 하고 있었다고 말합니다. 확인 가능한 사람이 있다고 덧붙입니다.`,
+      `${victim}를 마지막으로 본 뒤 곧바로 자기 일로 돌아갔다고 합니다. 사건 추정 시간에는 다른 장소에 있었다고 주장합니다.`,
+      `사건 전후 동선은 비교적 단순하며 ${scene}에 머문 시간은 짧았다고 말합니다. 주변 기록으로 확인 가능하다고 합니다.`
     ]);
   }
 
@@ -46,9 +49,9 @@
   }
 
   function openingLines() {
-    solo.log.push("시작 발언");
+    solo.log.push("시작 알리바이");
     solo.suspects.forEach((suspect) => {
-      solo.log.push(`${suspect.name}(${suspect.job}): ${neutralLine()}`);
+      solo.log.push(`${suspect.name}(${suspect.job}) 알리바이: ${alibiLine(suspect)}`);
     });
   }
 
@@ -60,7 +63,6 @@
     solo.used = 0;
     solo.selected = null;
     solo.log = [];
-    solo.clueIndex = 0;
     solo.rerolls = 0;
     drawHand();
     openingLines();
@@ -128,45 +130,58 @@
     render();
   }
 
-  function nextClue() {
-    const clues = solo.caseInfo.clues || [];
-    const clue = clues[solo.clueIndex % Math.max(clues.length, 1)];
-    solo.clueIndex += 1;
-    return clue || "";
+  function questionKind(question) {
+    if (/전후|10분|무엇을 했/.test(question)) return "time";
+    if (/마지막|마주친|장소/.test(question)) return "last";
+    if (/알리바이|증명/.test(question)) return "witness";
+    if (/핵심 흔적|언제 알았/.test(question)) return "trace";
+    if (/숨긴 관계|관계/.test(question)) return "relation";
+    if (/출입구|순서/.test(question)) return "route";
+    if (/빈 구간/.test(question)) return "gap";
+    if (/공개 기록|설명하기 어려운/.test(question)) return "record";
+    if (/금전|원한|문제/.test(question)) return "motive";
+    if (/도구|위치/.test(question)) return "object";
+    return "time";
   }
 
-  function clueTopic(clue) {
-    const value = String(clue || "");
-    if (/CCTV|카메라|영상|녹화|사진/.test(value)) return "기록된 장면";
-    if (/휴대폰|메시지|통화|녹음|채팅/.test(value)) return "연락 기록";
-    if (/서버|로그|전산|파일|클라우드|백업/.test(value)) return "남은 기록";
-    if (/결제|주문|계좌|영수증|돈|금전/.test(value)) return "돈의 흐름";
-    if (/출입|카드|도어락|차량|GPS|동선/.test(value)) return "이동 경로";
-    if (/가방|지문|섬유|흔적|자국|물건/.test(value)) return "현장 흔적";
-    return "확인해야 할 부분";
-  }
-
-  function indirectAnswer(suspect, clue) {
-    const topic = clueTopic(clue);
-    return window.App.pick(suspect.culprit ? [
-      `${topic}만으로 단정하기는 어렵습니다. 저는 평소와 크게 다르지 않았습니다.`,
-      `그 부분은 오해가 섞였을 수 있습니다. 지금 말할 수 있는 건 제 동선뿐입니다.`,
-      `${topic}을 다시 보면 다른 해석도 가능할 겁니다. 제가 먼저 설명할 일은 아닙니다.`,
-      `기억이 선명하지 않습니다. 다만 사건과 직접 엮일 만한 행동은 없었습니다.`
-    ] : [
-      `${topic}을 확인하면 제 말과 크게 어긋나지는 않을 겁니다.`,
-      `제가 본 건 제한적입니다. 그 부분은 기록을 맞춰 보는 게 낫습니다.`,
-      `그 시간대는 평소처럼 움직였습니다. 특별히 숨길 일은 없습니다.`,
-      `${topic} 쪽은 제가 단정할 수 없지만, 제 설명은 처음과 같습니다.`
-    ]);
+  function directAnswer(suspect, question) {
+    const kind = questionKind(question);
+    const scene = solo.caseInfo.scene || "현장";
+    const victim = solo.caseInfo.victim || "피해자";
+    const weapon = solo.caseInfo.weapon || "도구";
+    const motive = solo.caseInfo.motive || "개인적인 문제";
+    const culprit = {
+      time: `사건 전후 10분에는 ${scene} 근처를 지나갔다고 말합니다. 다만 정확히 어디에 몇 분 있었는지는 흐리게 답합니다.`,
+      last: `${victim}를 사건 전에 ${scene} 주변에서 봤다고 인정합니다. 이후에는 각자 움직였다고 주장합니다.`,
+      witness: "알리바이를 확실히 증명할 사람은 없고, 기록을 보면 된다고만 말합니다.",
+      trace: "현장 흔적은 업무나 우연한 접촉으로 남았을 수 있다고 말하지만, 언제 알았는지는 바로 답하지 못합니다.",
+      relation: `${victim}와 불편한 일이 있었던 건 맞지만 사건으로 이어질 정도는 아니었다고 말합니다.`,
+      route: `출입 순서는 ${scene}에 먼저 들렀다가 잠깐 자리를 비웠다는 식으로 말합니다. 순서가 앞선 알리바이와 조금 어긋납니다.`,
+      gap: "짧은 빈 구간은 개인적인 통화나 이동 때문이었다고 말합니다. 그 시간만 확인자가 없습니다.",
+      record: "기록이 어긋난다면 착오나 시스템 문제일 거라고 말합니다. 구체적인 반박은 하지 못합니다.",
+      motive: `${motive} 이야기는 과장됐다고 말합니다. 하지만 그 문제로 ${victim}와 말다툼이 있었던 점은 부정하지 않습니다.`,
+      object: `${weapon}의 위치는 원래 그 주변에 있었을 것이라고 말합니다. 자신이 마지막으로 만진 시점은 분명히 말하지 못합니다.`
+    };
+    const clear = {
+      time: `사건 전후 10분에는 ${scene}과 떨어진 곳에 있었다고 답합니다. 이동 시간이 맞지 않아 바로 현장에 오기 어렵다고 말합니다.`,
+      last: `${victim}를 마지막으로 본 건 사건보다 앞선 시점이라고 답합니다. 이후에는 다른 사람과 함께 있었다고 말합니다.`,
+      witness: "같이 있던 사람이나 남은 기록으로 알리바이를 확인할 수 있다고 답합니다.",
+      trace: "현장 흔적에 대해서는 직접 본 것이 없다고 답합니다. 알게 된 건 사건이 알려진 뒤라고 말합니다.",
+      relation: `${victim}와는 업무상 또는 일상적인 관계였고 숨길 만한 충돌은 없었다고 답합니다.`,
+      route: `출입 순서는 단순했다고 답합니다. ${scene}에 오래 머문 적은 없고 바로 다른 곳으로 이동했다고 말합니다.`,
+      gap: "동선의 빈 구간은 거의 없고, 잠깐 비는 시간도 주변 기록으로 맞출 수 있다고 답합니다.",
+      record: "공개 기록과 자신의 진술이 크게 다르지 않다고 답합니다. 이상한 점이 있다면 다른 사람 기록을 봐야 한다고 말합니다.",
+      motive: `${motive} 문제와 직접 관련된 적은 없다고 답합니다. ${victim}와 감정적으로 크게 부딪힌 일도 없었다고 합니다.`,
+      object: `${weapon}의 위치나 사용 여부는 모른다고 답합니다. 자신이 다루던 물건과는 다르다고 말합니다.`
+    };
+    return (suspect.culprit ? culprit : clear)[kind];
   }
 
   function answerQuestion(suspect) {
     if (!solo.selected) return;
-    const clue = nextClue();
     solo.used += 1;
     solo.log.push(`${suspect.name}(${suspect.job}) 질문: ${solo.selected.text}`);
-    solo.log.push(`${suspect.name} 답변: ${indirectAnswer(suspect, clue)}`);
+    solo.log.push(`${suspect.name} 답변: ${directAnswer(suspect, solo.selected.text)}`);
     solo.hand.splice(solo.selected.index, 1);
     solo.selected = null;
     render();
