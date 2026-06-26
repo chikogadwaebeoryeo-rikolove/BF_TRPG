@@ -163,7 +163,7 @@
     const clue = nextClue();
     solo.used += 1;
     solo.log.push(`${suspect.name}(${suspect.job}) 질문: ${solo.selected.text}`);
-    solo.log.push(`답변: ${indirectAnswer(suspect, clue)}`);
+    solo.log.push(`${suspect.name} 답변: ${indirectAnswer(suspect, clue)}`);
     solo.hand.splice(solo.selected.index, 1);
     solo.selected = null;
     render();

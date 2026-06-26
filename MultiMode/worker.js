@@ -262,7 +262,7 @@ export class RoomHub extends DurableObject {
     if (!room.active || room.active.target !== name) return json({ error: "target_only" }, 403);
     if (!reply) return json({ error: "empty_answer" }, 400);
     room.history.push(`${room.active.target} 질문: ${room.active.question}`);
-    room.history.push(`답변: ${reply}`);
+    room.history.push(`${room.active.target} 답변: ${reply}`);
     room.active = null;
     if (room.used >= 3) {
       if (room.phase === 0) {
@@ -311,7 +311,7 @@ export class RoomHub extends DurableObject {
     const correct = suspect.role === "마피아";
     room.final = { suspect: suspect.name, suspectJob: suspect.job || "용의자", suspectCorrect: correct, weapon: null, weaponCorrect: null, done: !correct };
     room.history.push(`경찰이 ${suspect.name}(${suspect.job || "용의자"})을 범인으로 지목했습니다.`);
-    room.history.push(correct ? "범인 지목 성공. 이제 무기를 맞춰야 합니다." : "범인 지목 실패. 사건 해결에 실패했습니다.");
+    room.history.push(correct ? "범인 지목 완료. 무기까지 맞춰야 정답 처리됩니다." : "범인 지목 실패. 사건 해결에 실패했습니다.");
     return json(this.view(await this.save(room), name));
   }
 
@@ -326,7 +326,7 @@ export class RoomHub extends DurableObject {
     const correct = clean(guess) === clean(room.case?.weapon);
     room.final = { ...room.final, weapon: guess, weaponCorrect: correct, answerWeapon: room.case?.weapon || "미상", done: true };
     room.history.push(`경찰이 무기를 ${guess}로 지목했습니다.`);
-    room.history.push(correct ? "무기 지목 성공. 경찰이 사건을 해결했습니다." : `무기 지목 실패. 정답은 ${room.final.answerWeapon}입니다.`);
+    room.history.push(correct ? "범인과 무기를 모두 맞췄습니다. 정답 처리됩니다." : `무기 지목 실패. 정답은 ${room.final.answerWeapon}입니다.`);
     return json(this.view(await this.save(room), name));
   }
 
