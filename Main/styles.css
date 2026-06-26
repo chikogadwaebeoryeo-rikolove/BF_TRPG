@@ -554,6 +554,11 @@ body.session-open #main-title-container {
   padding-top: 1rem;
   color: #b9b1a6;
   min-height: 2.5rem;
+  max-height: 18rem;
+  overflow-y: auto;
+  padding-right: 0.35rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold) #08090b;
 }
 
 .chat-form {
