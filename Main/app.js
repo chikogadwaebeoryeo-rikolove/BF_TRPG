@@ -57,7 +57,7 @@
     시민: { title: "시민", image: "../역할카드/시민.jpg" },
     마피아: { title: "마피아", image: "../역할카드/마피아.jpg" }
   };
-  const state = { mode: "solo", cases: fallbackCases, roomTimer: null, toastTimer: null, role: null, playerName: "플레이어", roleRevealed: false };
+  const state = { mode: "solo", cases: fallbackCases, roomTimer: null, toastTimer: null, role: null, playerName: "플레이어", roleHold: false };
 
   function toast(text) {
     $("toast-text").textContent = text;
@@ -134,37 +134,39 @@
 
   function renderRoleProfile() {
     $("role-profile-name").textContent = state.playerName;
-    $("role-profile-label").textContent = state.roleRevealed && state.role ? roleDefs[state.role].title : "?";
+    $("role-profile-label").textContent = "?";
     $("role-profile-image").replaceChildren();
-    if (state.roleRevealed && state.role) {
-      const img = document.createElement("img");
-      img.src = roleDefs[state.role].image;
-      img.alt = roleDefs[state.role].title;
-      $("role-profile-image").appendChild(img);
-    } else {
-      $("role-profile-image").textContent = "?";
-    }
+    $("role-profile-image").textContent = "?";
   }
 
   function setRole(role, name = "플레이어", showNow = false) {
     state.role = roleDefs[role] ? role : null;
     state.playerName = name || "플레이어";
-    state.roleRevealed = false;
     renderRoleProfile();
-    if (showNow && state.role) showRoleModal(false);
+    if (showNow && state.role) showRoleModal();
   }
 
-  function showRoleModal(revealProfile = true) {
+  function showRoleModal() {
     if (!state.role) return;
     const role = roleDefs[state.role];
-    if (revealProfile) {
-      state.roleRevealed = true;
-      renderRoleProfile();
-    }
     $("role-modal-title").textContent = role.title;
     $("role-modal-image").src = role.image;
     $("role-modal-image").alt = role.title;
     openModal($("modal-role"));
+  }
+
+  function showHeldRole(event) {
+    if (!state.role) return;
+    event.preventDefault();
+    state.roleHold = true;
+    if (event.pointerId !== undefined) $("role-profile").setPointerCapture(event.pointerId);
+    showRoleModal();
+  }
+
+  function hideHeldRole() {
+    if (!state.roleHold) return;
+    state.roleHold = false;
+    closeModal($("modal-role"));
   }
 
   function renderRules(mode) {
@@ -234,7 +236,14 @@
       event.preventDefault();
       window.MultiMode.submitChat();
     });
-    $("role-profile").addEventListener("click", showRoleModal);
+    $("role-profile").addEventListener("click", (event) => event.preventDefault());
+    $("role-profile").addEventListener("pointerdown", showHeldRole);
+    $("role-profile").addEventListener("pointerup", hideHeldRole);
+    $("role-profile").addEventListener("pointercancel", hideHeldRole);
+    $("role-profile").addEventListener("keydown", (event) => {
+      if (event.key === " " || event.key === "Enter") showHeldRole(event);
+    });
+    $("role-profile").addEventListener("keyup", hideHeldRole);
     $("btn-rules").addEventListener("click", () => {
       renderRules(state.mode);
       openModal($("modal-rules"));
