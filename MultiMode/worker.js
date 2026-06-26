@@ -19,6 +19,8 @@ const fallbackQuestions = [
   "도구나 기록이 원래 있던 위치는 어디인가?"
 ];
 
+const fallbackJobs = ["간호사", "기자", "경찰", "회계사", "변호사", "상담원", "경비원", "프로그래머", "연예인", "약사", "교사", "배달원", "알바생", "사업가", "택시기사"];
+
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
   status,
   headers: {
@@ -32,6 +34,8 @@ const text = (value, max = 300) => String(value || "").trim().slice(0, max);
 const roomCode = () => Array.from({ length: 6 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]).join("");
 const shuffle = (list) => [...list].sort(() => Math.random() - 0.5);
 const hand = (questions) => shuffle(Array.isArray(questions) && questions.length ? questions.map((item) => text(item, 180)).filter(Boolean) : fallbackQuestions).slice(0, 5);
+const uniqueTexts = (list, max = 30) => [...new Set((Array.isArray(list) ? list : []).map((item) => text(item, max)).filter(Boolean))];
+const clean = (value) => text(value, 80).replace(/\s+/g, "").toLowerCase();
 
 async function readBody(request) {
   if (request.method === "GET") return {};
@@ -100,6 +104,8 @@ export class RoomHub extends DurableObject {
     if (url.pathname.endsWith("/answer")) return this.answer(body);
     if (url.pathname.endsWith("/speech")) return this.speech(body);
     if (url.pathname.endsWith("/chat")) return this.chat(body);
+    if (url.pathname.endsWith("/accuse")) return this.accuse(body);
+    if (url.pathname.endsWith("/weapon")) return this.weapon(body);
     return json({ error: "not_found" }, 404);
   }
 
@@ -113,11 +119,16 @@ export class RoomHub extends DurableObject {
     room.phase ||= 0;
     room.discovered ||= [];
     room.started = Boolean(room.started);
+    room.final ||= null;
     return room;
   }
 
   view(room, viewer) {
     const safe = this.normalize(structuredClone(room));
+    const local = safe.players.find((player) => player.name === viewer);
+    const gameCase = safe.case || {};
+    safe.private = local?.role === "마피아" && gameCase.weapon ? { weapon: gameCase.weapon } : null;
+    safe.case = { id: gameCase.id, victim: gameCase.victim, scene: gameCase.scene };
     safe.players = safe.players.map((player) => ({
       ...player,
       role: player.name === viewer ? player.role : player.host ? "경찰" : null
@@ -156,7 +167,7 @@ export class RoomHub extends DurableObject {
     if (!gameCase) return json({ error: "case_required" }, 400);
     const room = {
       code: text(body.code, 8).toUpperCase(),
-      players: [{ name, host: true, role: null }],
+      players: [{ name, host: true, role: null, job: null }],
       case: gameCase,
       started: false,
       phase: 0,
@@ -164,6 +175,7 @@ export class RoomHub extends DurableObject {
       hand: [],
       active: null,
       speech: null,
+      final: null,
       discovered: [],
       history: ["3명 이상 모이면 경찰이 게임을 시작할 수 있습니다."],
       chat: [],
@@ -179,7 +191,7 @@ export class RoomHub extends DurableObject {
     if (!room.players.some((player) => player.name === name)) {
       if (room.started) return json({ error: "game_started" }, 409);
       if (room.players.length >= 15) return json({ error: "room_full" }, 409);
-      room.players.push({ name, host: false, role: null });
+      room.players.push({ name, host: false, role: null, job: null });
       room.history.push(`${name} 참여`);
     }
     return json(this.view(await this.save(room), name));
@@ -200,13 +212,23 @@ export class RoomHub extends DurableObject {
     if (room.players.length < 3) return json({ error: "need_three_players" }, 409);
     const suspects = this.suspects(room);
     const mafia = shuffle(suspects)[0]?.name;
-    room.players = room.players.map((player) => ({ ...player, role: player.host ? "경찰" : player.name === mafia ? "마피아" : "시민" }));
+    const culpritJob = text(room.case?.culprit, 30);
+    const requestedJobs = uniqueTexts(body.jobs, 30);
+    const pool = shuffle(requestedJobs.length ? requestedJobs : fallbackJobs).filter((job) => job !== culpritJob);
+    let jobIndex = 0;
+    room.players = room.players.map((player) => {
+      if (player.host) return { ...player, role: "경찰", job: "수사관" };
+      const mafiaPlayer = player.name === mafia;
+      const job = mafiaPlayer && culpritJob ? culpritJob : pool[jobIndex++ % Math.max(pool.length, 1)] || "용의자";
+      return { ...player, role: mafiaPlayer ? "마피아" : "시민", job };
+    });
     room.started = true;
     room.phase = 0;
     room.used = 0;
     room.hand = hand(body.questions);
     room.discovered = [];
     room.active = null;
+    room.final = null;
     room.speech = suspects.length ? { type: "opening", index: 0 } : null;
     room.history.push("게임 시작");
     room.history.push("시작 발언을 진행합니다.");
@@ -278,12 +300,45 @@ export class RoomHub extends DurableObject {
     const speaker = this.speaker(room);
     if (!speaker || speaker.name !== name) return json({ error: "speaker_only" }, 403);
     if (!message) return json({ error: "empty_speech" }, 400);
-    room.history.push(`${room.speech.type === "opening" ? "시작 발언" : "마지막 발언"} ${name}: ${message}`);
+    const type = room.speech.type;
+    room.history.push(`${type === "opening" ? "시작 발언" : "마지막 발언"} ${name}: ${message}`);
     room.speech.index += 1;
     if (!this.speaker(room)) {
-      room.history.push(room.speech.type === "opening" ? "질문을 시작합니다." : "마지막 발언이 끝났습니다.");
+      room.history.push(type === "opening" ? "질문을 시작합니다." : "마지막 발언이 끝났습니다.");
+      if (type === "closing") room.history.push("경찰은 범인을 지목할 수 있습니다.");
       room.speech = null;
     }
+    return json(this.view(await this.save(room), name));
+  }
+
+  async accuse(body) {
+    const room = this.normalize(await this.data());
+    if (!room) return json({ error: "room_not_found" }, 404);
+    const name = text(body.name, 16);
+    const target = text(body.target, 16);
+    if (!this.isHost(room, name)) return json({ error: "host_only" }, 403);
+    if (!room.started || room.phase < 2 || room.speech || room.active || room.final?.done) return json({ error: "bad_state" }, 409);
+    const suspect = this.suspects(room).find((player) => player.name === target);
+    if (!suspect) return json({ error: "bad_target" }, 400);
+    const correct = suspect.role === "마피아";
+    room.final = { suspect: suspect.name, suspectJob: suspect.job || "용의자", suspectCorrect: correct, weapon: null, weaponCorrect: null, done: !correct };
+    room.history.push(`경찰이 ${suspect.name}(${suspect.job || "용의자"})을 범인으로 지목했습니다.`);
+    room.history.push(correct ? "범인 지목 성공. 이제 무기를 맞춰야 합니다." : "범인 지목 실패. 사건 해결에 실패했습니다.");
+    return json(this.view(await this.save(room), name));
+  }
+
+  async weapon(body) {
+    const room = this.normalize(await this.data());
+    if (!room) return json({ error: "room_not_found" }, 404);
+    const name = text(body.name, 16);
+    const guess = text(body.weapon, 30);
+    if (!this.isHost(room, name)) return json({ error: "host_only" }, 403);
+    if (!room.final?.suspectCorrect || room.final.done) return json({ error: "bad_state" }, 409);
+    if (!guess) return json({ error: "weapon_required" }, 400);
+    const correct = clean(guess) === clean(room.case?.weapon);
+    room.final = { ...room.final, weapon: guess, weaponCorrect: correct, answerWeapon: room.case?.weapon || "미상", done: true };
+    room.history.push(`경찰이 무기를 ${guess}로 지목했습니다.`);
+    room.history.push(correct ? "무기 지목 성공. 경찰이 사건을 해결했습니다." : `무기 지목 실패. 정답은 ${room.final.answerWeapon}입니다.`);
     return json(this.view(await this.save(room), name));
   }
 

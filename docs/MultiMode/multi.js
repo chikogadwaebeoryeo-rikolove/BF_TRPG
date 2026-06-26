@@ -43,6 +43,11 @@
     return suspects()[multi.room.speech.index] || null;
   }
 
+  function clearMemo() {
+    const box = document.getElementById("multi-case-memo");
+    if (box) box.value = "";
+  }
+
   function syncRole() {
     const { setRole, state, renderRoleProfile } = window.App;
     const player = localPlayer();
@@ -70,6 +75,7 @@
       multi.roleKey = "";
       setRole(null, multi.currentName);
       openRoom();
+      clearMemo();
       toast(`방 코드 ${multi.room.code}`);
     } catch (error) {
       toast(error.message === "server_url_required" ? "멀티 서버 URL을 설정해야 합니다." : "방을 만들지 못했습니다.");
@@ -85,6 +91,7 @@
       multi.roleKey = "";
       setRole(null, multi.currentName);
       openRoom();
+      clearMemo();
       toast(`${multi.room.code} 방에 참여했습니다.`);
     } catch (error) {
       toast(error.message === "server_url_required" ? "멀티 서버 URL을 설정해야 합니다." : "방에 참여하지 못했습니다.");
@@ -111,10 +118,10 @@
   }
 
   async function startRoom() {
-    const { questions, toast } = window.App;
+    const { jobs, questions, toast } = window.App;
     if (!multi.room) return;
     try {
-      multi.room = await api("/api/rooms/start", { code: multi.room.code, name: multi.currentName, questions });
+      multi.room = await api("/api/rooms/start", { code: multi.room.code, name: multi.currentName, jobs, questions });
       renderRoom();
     } catch (error) {
       toast(error.message === "need_three_players" ? "3명 이상이어야 시작할 수 있습니다." : "게임을 시작하지 못했습니다.");
@@ -133,17 +140,19 @@
     $("room-share-text").textContent = room.started ? "게임이 시작되었습니다." : "다른 플레이어는 이 링크로 접속한 뒤 방 코드를 입력합니다.";
     $("room-url").textContent = share;
     $("room-player-count").textContent = `${room.players.length}/15`;
-    fillList($("room-player-list"), room.players.map((p) => `${p.name}${p.host ? " · 경찰" : " · 용의자"}`));
+    fillList($("room-player-list"), room.players.map((p) => `${p.name} · ${p.job || (p.host ? "수사관" : "직업 대기")} · ${p.role || (p.host ? "경찰" : "역할 비공개")}`));
     $("btn-start-room").classList.toggle("hidden", room.started || !isHost());
     $("btn-start-room").disabled = room.players.length < 3;
     $("multi-case-meta").textContent = "초기 공개 정보";
     $("multi-case-victim").textContent = `피해자: ${gameCase.victim || "미상"}`;
-    $("multi-case-weapon").textContent = gameCase.weapon || "미상";
     $("multi-case-scene").textContent = gameCase.scene || "미상";
+    $("multi-private-weapon").classList.toggle("hidden", !room.private?.weapon);
+    $("multi-private-weapon").textContent = room.private?.weapon ? `범인 전용 정보 · 무기: ${room.private.weapon}` : "";
     fillList($("multi-evidence-list"), room.discovered?.length ? room.discovered : ["아직 발견된 단서가 없습니다."]);
     renderSpeechControl();
     renderQuestionControl();
     renderAnswerBox();
+    renderFinalControl();
     renderMultiLog();
     renderChat();
   }
@@ -162,7 +171,7 @@
   function renderQuestionControl() {
     const { $, questions } = window.App;
     const room = multi.room;
-    const blocked = !room.started || Boolean(room.speech) || Boolean(room.active) || room.phase > 1 || room.used >= 3;
+    const blocked = !room.started || Boolean(room.speech) || Boolean(room.active) || Boolean(room.final) || room.phase > 1 || room.used >= 3;
     $("multi-question-state").textContent = !room.started ? "3명 이상 입장 후 시작" : room.speech ? "발언 진행 중" : room.active ? `${room.active.target} 답변 대기` : isHost() ? `${room.used}/3 질문` : "경찰 질문 대기";
     $("multi-question-list").replaceChildren();
     $("multi-target-list").replaceChildren();
@@ -181,11 +190,11 @@
       const btn = document.createElement("button");
       btn.className = "suspect-card";
       btn.disabled = !isHost() || blocked || !multi.selectedQuestion;
-      btn.innerHTML = `<strong>${player.name}</strong><span>용의자</span>`;
+      btn.innerHTML = `<strong>${player.name}</strong><span>${player.job || "직업 미정"}</span>`;
       btn.addEventListener("click", () => ask(player.name));
       $("multi-target-list").appendChild(btn);
     });
-    $("btn-reroll-multi-hand").disabled = !isHost() || !room.started || Boolean(room.speech) || Boolean(room.active) || room.phase > 1 || room.used >= 3;
+    $("btn-reroll-multi-hand").disabled = !isHost() || !room.started || Boolean(room.speech) || Boolean(room.active) || Boolean(room.final) || room.phase > 1 || room.used >= 3;
   }
 
   async function ask(target) {
@@ -232,6 +241,63 @@
       renderRoom();
     } catch (error) {
       toast("선택된 용의자만 답변할 수 있습니다.");
+    }
+  }
+
+  function finalEnabled() {
+    const room = multi.room;
+    return Boolean(room?.started && room.phase >= 2 && !room.speech && !room.active);
+  }
+
+  function finalText(final) {
+    if (!final) return finalEnabled() ? isHost() ? "범인 지목 대기" : "경찰 지목 대기" : "질문과 발언 종료 후 진행";
+    if (final.suspectCorrect && !final.done) return "범인 지목 성공 · 무기 지목 대기";
+    if (!final.suspectCorrect) return "범인 지목 실패";
+    return final.weaponCorrect ? "사건 해결 성공" : "무기 지목 실패";
+  }
+
+  function renderFinalControl() {
+    const { $ } = window.App;
+    const room = multi.room;
+    const final = room?.final;
+    const canAccuse = isHost() && finalEnabled() && !final;
+    const canGuessWeapon = isHost() && final?.suspectCorrect && !final.done;
+    $("multi-final-state").textContent = finalText(final);
+    $("multi-final-suspects").replaceChildren();
+    suspects().forEach((player) => {
+      const btn = document.createElement("button");
+      btn.className = "suspect-card";
+      btn.disabled = !canAccuse;
+      btn.innerHTML = `<strong>${player.name}</strong><span>${player.job || "직업 미정"}</span>`;
+      btn.addEventListener("click", () => accuse(player.name));
+      $("multi-final-suspects").appendChild(btn);
+    });
+    $("weapon-guess-panel").classList.toggle("hidden", !canGuessWeapon);
+    $("weapon-guess-input").disabled = !canGuessWeapon;
+    $("btn-submit-weapon").disabled = !canGuessWeapon;
+    if (!canGuessWeapon) $("weapon-guess-input").value = "";
+  }
+
+  async function accuse(target) {
+    const { toast } = window.App;
+    try {
+      multi.room = await api("/api/rooms/accuse", { code: multi.room.code, name: multi.currentName, target });
+      renderRoom();
+    } catch (error) {
+      toast("지목할 수 없습니다.");
+    }
+  }
+
+  async function submitWeapon() {
+    const { $, toast } = window.App;
+    const weapon = $("weapon-guess-input").value.trim();
+    if (!weapon) return toast("무기를 입력하십시오.");
+    try {
+      multi.room = await api("/api/rooms/weapon", { code: multi.room.code, name: multi.currentName, weapon });
+      $("weapon-guess-input").value = "";
+      renderRoom();
+    } catch (error) {
+      toast("무기를 지목할 수 없습니다.");
     }
   }
 
@@ -284,5 +350,5 @@
     }));
   }
 
-  window.MultiMode = { createRoom, joinRoom, refreshRoom, startRoom, rerollHand, submitAnswer, submitSpeech, submitChat };
+  window.MultiMode = { createRoom, joinRoom, refreshRoom, startRoom, rerollHand, submitAnswer, submitSpeech, submitChat, submitWeapon };
 })();

@@ -446,6 +446,20 @@ body.session-open #main-title-container {
   font-size: 1rem;
 }
 
+.case-memo {
+  width: 100%;
+  min-height: 4.4rem;
+}
+
+.private-note {
+  margin: 0.75rem 0 0;
+  border: 1px solid rgba(102, 252, 241, 0.35);
+  border-radius: var(--radius);
+  background: rgba(102, 252, 241, 0.08);
+  color: var(--cyan);
+  padding: 0.75rem 0.85rem;
+}
+
 .suspect-list,
 .question-list,
 .final-pick {
