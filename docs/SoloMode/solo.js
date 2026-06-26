@@ -20,11 +20,34 @@
     return shuffle(list);
   }
 
+  function neutralLine() {
+    return window.App.pick([
+      "사건 전후로 평소 일정에서 크게 벗어난 일은 없었습니다.",
+      "피해자와는 필요한 말만 나눴고 특별히 다툰 기억은 없습니다.",
+      "제 위치는 다른 사람들과 기록을 맞춰 보면 확인될 겁니다.",
+      "그 시간대에는 주변이 어수선해서 세부 순서는 다시 확인해야 합니다.",
+      "제가 본 것은 많지 않지만 질문을 받으면 아는 만큼 말하겠습니다.",
+      "피해자를 마지막으로 본 시점은 정확히 정리해서 말씀드리겠습니다.",
+      "현장 근처에 있던 이유는 제 업무와 관련된 일이었습니다.",
+      "특별히 숨길 일은 없고, 기억나는 범위에서 답하겠습니다."
+    ]);
+  }
+
+  function closingLine() {
+    return window.App.pick([
+      "제가 말한 내용은 앞선 답변과 크게 다르지 않습니다.",
+      "의심받는 건 이해하지만, 제 기억은 처음부터 일관됩니다.",
+      "빠뜨린 부분이 있다면 기록을 보고 다시 확인해야 합니다.",
+      "저도 사건이 왜 그렇게 흘러갔는지 명확히 알고 싶습니다.",
+      "제 동선은 설명했고, 더 덧붙일 말은 많지 않습니다.",
+      "질문받은 부분 외에는 특별히 말할 내용이 없습니다."
+    ]);
+  }
+
   function openingLines() {
     solo.log.push("시작 발언");
     solo.suspects.forEach((suspect) => {
-      const line = suspect.culprit ? "피해자와 업무상으로만 마주쳤고 특별한 일은 없었습니다." : "사건 당시 제 동선은 곧 설명할 수 있습니다.";
-      solo.log.push(`${suspect.name}(${suspect.job}): ${line}`);
+      solo.log.push(`${suspect.name}(${suspect.job}): ${neutralLine()}`);
     });
   }
 
@@ -147,8 +170,7 @@
   function closingLines() {
     solo.log.push("마지막 발언");
     solo.suspects.forEach((suspect) => {
-      const line = suspect.culprit ? solo.caseInfo.alibi : "제 진술은 앞선 답변과 같습니다.";
-      solo.log.push(`${suspect.name}: ${line}`);
+      solo.log.push(`${suspect.name}: ${closingLine()}`);
     });
   }
 
