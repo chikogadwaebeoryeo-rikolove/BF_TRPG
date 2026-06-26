@@ -9,32 +9,57 @@
     solo.hand = shuffle(window.App.questions).slice(0, 5);
   }
 
+  function makeAlibi(gameCase, culprit, job) {
+    const { pick } = window.App;
+    const scene = gameCase.scene || "현장";
+    const victim = gameCase.victim || "피해자";
+    const weapon = gameCase.weapon || "도구";
+    const motive = gameCase.motive || "개인적인 문제";
+    const away = pick(["로비", "주차장", "휴게실", "계단 앞", "사무실", "복도 끝", "창고 앞", "출입구 근처"]);
+    const witness = pick(["동료", "직원", "손님", "경비 기록", "출입 기록", "결제 기록"]);
+    if (culprit) {
+      return {
+        opening: `저는 사건 시각에 ${scene} 근처를 지나갔습니다. ${victim}와는 잠깐 말했지만 바로 헤어졌고, 그 뒤 몇 분은 혼자 있었습니다.`,
+        time: `저는 사건 전후 10분 동안 ${scene} 근처에 있었습니다. 정확히는 잠깐 이동했다고 생각하는데, 그 몇 분은 저를 본 사람이 없습니다.`,
+        last: `${victim}와 마지막으로 마주친 곳은 ${scene} 주변입니다. 짧게 이야기했고, 그 뒤에는 서로 다른 방향으로 갔다고 기억합니다.`,
+        witness: `제 알리바이를 확실히 증명해 줄 사람은 없습니다. 다만 제가 오래 머문 건 아니니 주변 기록을 보면 어느 정도 확인될 겁니다.`,
+        trace: `그 흔적은 나중에 이야기를 듣고 알았습니다. 제가 ${scene} 근처에 있었으니 일부 흔적이 제 동선과 겹칠 수는 있습니다.`,
+        relation: `${victim}와 ${motive} 문제로 불편한 대화가 있었던 건 맞습니다. 그래도 사건을 벌일 정도의 관계는 아니었습니다.`,
+        route: `저는 ${scene} 쪽 출입구를 지나 복도 쪽으로 나갔다가 다시 방향을 바꿨습니다. 순서는 조금 헷갈립니다.`,
+        gap: `빈 구간은 몇 분 정도 있습니다. 그때는 혼자 통화하거나 이동 중이었다고 기억합니다.`,
+        record: `기록이 이상하게 보인다면 제가 급하게 움직였기 때문일 겁니다. 정확한 시간까지는 기억하지 못합니다.`,
+        motive: `${motive} 문제로 말이 나온 적은 있습니다. 하지만 저는 그 일을 크게 만들 생각이 없었습니다.`,
+        object: `${weapon}은 ${scene} 주변에서 봤을 수 있습니다. 제가 마지막으로 만졌는지는 확실히 말하기 어렵습니다.`
+      };
+    }
+    return {
+      opening: `저는 사건 시각에 ${scene}이 아니라 ${away}에 있었습니다. ${witness}로 확인할 수 있고, ${victim}와는 그 전에 헤어졌습니다.`,
+      time: `저는 사건 전후 10분 동안 ${away}에 있었습니다. ${witness}가 남아 있어서 제 위치를 확인할 수 있습니다.`,
+      last: `${victim}를 마지막으로 본 곳은 ${scene} 근처가 아니라 이동 중이던 길목이었습니다. 사건 추정 시각보다 앞선 때였습니다.`,
+      witness: `제 알리바이는 ${witness}로 확인할 수 있습니다. 제가 계속 혼자 있었다고 말하는 건 아닙니다.`,
+      trace: `현장의 핵심 흔적은 사건이 알려진 뒤에 들었습니다. 그 전에는 ${scene} 안쪽 상황을 몰랐습니다.`,
+      relation: `${victim}와는 ${job} 일과 관련해 필요한 말만 했습니다. 숨길 만한 사적인 충돌은 없었습니다.`,
+      route: `출입 순서는 ${away}에서 다른 장소로 이동한 흐름입니다. ${scene}에 오래 머물지 않았습니다.`,
+      gap: `제 동선에서 비는 시간은 길지 않습니다. 짧은 이동 시간은 있지만 ${witness}와 맞춰 볼 수 있습니다.`,
+      record: `공개 기록과 제 말은 크게 다르지 않을 겁니다. 이상한 점이 있다면 제가 아니라 다른 사람의 이동 기록을 봐야 합니다.`,
+      motive: `${motive} 문제와 저는 직접 관련이 없습니다. ${victim}와 감정적으로 크게 부딪힌 적도 없습니다.`,
+      object: `${weapon}의 위치는 모릅니다. 제 물건도 아니고 제가 다뤘던 물건도 아닙니다.`
+    };
+  }
+
   function buildSuspects(gameCase) {
     const { pick, names, jobs } = window.App;
     const namePool = shuffle(names);
     const nextName = () => namePool.shift() || pick(names);
     const culpritJob = jobs.includes(gameCase.culprit) ? gameCase.culprit : pick(jobs);
-    const pool = jobs.filter((job) => job !== culpritJob);
-    const list = [{ name: nextName(), job: culpritJob, culprit: true }];
-    while (list.length < 5) {
-      const job = pick(pool);
-      if (!list.some((suspect) => suspect.job === job)) list.push({ name: nextName(), job, culprit: false });
-    }
+    const pool = shuffle(jobs.filter((job) => job !== culpritJob));
+    const list = [{ name: nextName(), job: culpritJob, culprit: true, alibi: makeAlibi(gameCase, true, culpritJob) }];
+    pool.slice(0, 4).forEach((job) => list.push({ name: nextName(), job, culprit: false, alibi: makeAlibi(gameCase, false, job) }));
     return shuffle(list);
   }
 
   function alibiLine(suspect) {
-    const scene = solo.caseInfo.scene || "현장";
-    const victim = solo.caseInfo.victim || "피해자";
-    return suspect.culprit ? window.App.pick([
-      `사건 시각에는 ${scene} 근처에 잠깐 있었지만 ${victim}와 직접 마주치지는 않았다고 주장합니다. 확인자는 뚜렷하지 않습니다.`,
-      `${scene} 주변을 지나간 일은 인정하지만 사건 시각에는 개인 용무를 보고 있었다고 말합니다. 시간 설명이 조금 비어 있습니다.`,
-      `${victim}와는 사건 전에 짧게 만났을 뿐이라며, 이후 동선은 기록으로 확인될 것이라고 주장합니다.`
-    ]) : window.App.pick([
-      `사건 시각에는 ${scene}과 떨어진 곳에서 ${suspect.job} 관련 일을 하고 있었다고 말합니다. 확인 가능한 사람이 있다고 덧붙입니다.`,
-      `${victim}를 마지막으로 본 뒤 곧바로 자기 일로 돌아갔다고 합니다. 사건 추정 시간에는 다른 장소에 있었다고 주장합니다.`,
-      `사건 전후 동선은 비교적 단순하며 ${scene}에 머문 시간은 짧았다고 말합니다. 주변 기록으로 확인 가능하다고 합니다.`
-    ]);
+    return suspect.alibi.opening;
   }
 
   function closingLine() {
@@ -145,36 +170,7 @@
   }
 
   function directAnswer(suspect, question) {
-    const kind = questionKind(question);
-    const scene = solo.caseInfo.scene || "현장";
-    const victim = solo.caseInfo.victim || "피해자";
-    const weapon = solo.caseInfo.weapon || "도구";
-    const motive = solo.caseInfo.motive || "개인적인 문제";
-    const culprit = {
-      time: `사건 전후 10분에는 ${scene} 근처를 지나갔다고 말합니다. 다만 정확히 어디에 몇 분 있었는지는 흐리게 답합니다.`,
-      last: `${victim}를 사건 전에 ${scene} 주변에서 봤다고 인정합니다. 이후에는 각자 움직였다고 주장합니다.`,
-      witness: "알리바이를 확실히 증명할 사람은 없고, 기록을 보면 된다고만 말합니다.",
-      trace: "현장 흔적은 업무나 우연한 접촉으로 남았을 수 있다고 말하지만, 언제 알았는지는 바로 답하지 못합니다.",
-      relation: `${victim}와 불편한 일이 있었던 건 맞지만 사건으로 이어질 정도는 아니었다고 말합니다.`,
-      route: `출입 순서는 ${scene}에 먼저 들렀다가 잠깐 자리를 비웠다는 식으로 말합니다. 순서가 앞선 알리바이와 조금 어긋납니다.`,
-      gap: "짧은 빈 구간은 개인적인 통화나 이동 때문이었다고 말합니다. 그 시간만 확인자가 없습니다.",
-      record: "기록이 어긋난다면 착오나 시스템 문제일 거라고 말합니다. 구체적인 반박은 하지 못합니다.",
-      motive: `${motive} 이야기는 과장됐다고 말합니다. 하지만 그 문제로 ${victim}와 말다툼이 있었던 점은 부정하지 않습니다.`,
-      object: `${weapon}의 위치는 원래 그 주변에 있었을 것이라고 말합니다. 자신이 마지막으로 만진 시점은 분명히 말하지 못합니다.`
-    };
-    const clear = {
-      time: `사건 전후 10분에는 ${scene}과 떨어진 곳에 있었다고 답합니다. 이동 시간이 맞지 않아 바로 현장에 오기 어렵다고 말합니다.`,
-      last: `${victim}를 마지막으로 본 건 사건보다 앞선 시점이라고 답합니다. 이후에는 다른 사람과 함께 있었다고 말합니다.`,
-      witness: "같이 있던 사람이나 남은 기록으로 알리바이를 확인할 수 있다고 답합니다.",
-      trace: "현장 흔적에 대해서는 직접 본 것이 없다고 답합니다. 알게 된 건 사건이 알려진 뒤라고 말합니다.",
-      relation: `${victim}와는 업무상 또는 일상적인 관계였고 숨길 만한 충돌은 없었다고 답합니다.`,
-      route: `출입 순서는 단순했다고 답합니다. ${scene}에 오래 머문 적은 없고 바로 다른 곳으로 이동했다고 말합니다.`,
-      gap: "동선의 빈 구간은 거의 없고, 잠깐 비는 시간도 주변 기록으로 맞출 수 있다고 답합니다.",
-      record: "공개 기록과 자신의 진술이 크게 다르지 않다고 답합니다. 이상한 점이 있다면 다른 사람 기록을 봐야 한다고 말합니다.",
-      motive: `${motive} 문제와 직접 관련된 적은 없다고 답합니다. ${victim}와 감정적으로 크게 부딪힌 일도 없었다고 합니다.`,
-      object: `${weapon}의 위치나 사용 여부는 모른다고 답합니다. 자신이 다루던 물건과는 다르다고 말합니다.`
-    };
-    return (suspect.culprit ? culprit : clear)[kind];
+    return suspect.alibi[questionKind(question)];
   }
 
   function answerQuestion(suspect) {
@@ -204,11 +200,12 @@
     const box = $("case-log");
     const base = solo.selected ? [`선택한 질문: ${solo.selected.text}`, "답변할 용의자를 선택하십시오."] : ["질문카드를 선택한 뒤 용의자를 선택하십시오."];
     const lines = solo.log.length ? solo.log : base;
-    box.replaceChildren(...lines.slice(-10).map((text) => {
+    box.replaceChildren(...lines.map((text) => {
       const line = document.createElement("div");
       line.textContent = text;
       return line;
     }));
+    box.scrollTop = box.scrollHeight;
   }
 
   function closingLines() {

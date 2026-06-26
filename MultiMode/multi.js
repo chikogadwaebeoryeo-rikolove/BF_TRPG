@@ -370,11 +370,12 @@
     const { $ } = window.App;
     const lines = [...(multi.room.history || [])];
     if (!lines.length) lines.push("3명 이상 모이면 경찰이 게임을 시작할 수 있습니다.");
-    $("multi-log").replaceChildren(...lines.slice(-10).map((text) => {
+    $("multi-log").replaceChildren(...lines.map((text) => {
       const line = document.createElement("div");
       line.textContent = text;
       return line;
     }));
+    $("multi-log").scrollTop = $("multi-log").scrollHeight;
   }
 
   function renderChat() {
@@ -382,11 +383,12 @@
     const lines = [...(multi.room.chat || [])];
     $("chat-state").textContent = multi.room.started ? "전체 채팅" : "대기실 채팅";
     $("chat-input").disabled = false;
-    $("multi-chat-log").replaceChildren(...(lines.length ? lines : ["아직 채팅이 없습니다."]).slice(-10).map((text) => {
+    $("multi-chat-log").replaceChildren(...(lines.length ? lines : ["아직 채팅이 없습니다."]).map((text) => {
       const line = document.createElement("div");
       line.textContent = text;
       return line;
     }));
+    $("multi-chat-log").scrollTop = $("multi-chat-log").scrollHeight;
   }
 
   window.MultiMode = { createRoom, joinRoom, refreshRoom, startRoom, rerollHand, submitAnswer, submitSpeech, submitChat, submitWeapon, kickPlayer };
