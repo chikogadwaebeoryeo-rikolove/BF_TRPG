@@ -1,0 +1,11 @@
+name = "bf-trpg-multi"
+main = "worker.js"
+compatibility_date = "2026-06-26"
+
+[[durable_objects.bindings]]
+name = "ROOM_HUB"
+class_name = "RoomHub"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RoomHub"]
