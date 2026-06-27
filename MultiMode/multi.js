@@ -188,16 +188,31 @@
   }
 
   async function newGame() {
-    const { jobs, pick, questions, state, toast } = window.App;
+    const { jobs, pick, questions, setRole, state, toast } = window.App;
     if (!multi.room) return;
     if (!isHost()) return toast("방장만 새 게임을 시작할 수 있습니다.");
+    const gameCase = pick(state.cases);
     try {
-      multi.room = await api("/api/rooms/restart", { code: multi.room.code, name: multi.currentName, case: pick(state.cases), jobs, questions });
+      multi.room = await api("/api/rooms/restart", { code: multi.room.code, name: multi.currentName, case: gameCase, jobs, questions });
       multi.roleKey = "";
       resetSignals();
       renderRoom();
       toast("새 게임을 시작했습니다.");
     } catch (error) {
+      if (error.message === "not_found") {
+        try {
+          multi.room = await api("/api/rooms/create", { name: multi.currentName, case: gameCase });
+          multi.roleKey = "";
+          resetSignals();
+          setRole(null, multi.currentName);
+          openRoom();
+          toast("새 방을 만들었습니다. 새 코드를 공유하십시오.");
+          return;
+        } catch (fallbackError) {
+          toast("새 게임을 시작하지 못했습니다.");
+          return;
+        }
+      }
       toast(error.message === "need_three_players" ? "3명 이상이어야 새 게임을 시작할 수 있습니다." : error.message === "host_only" ? "방장만 새 게임을 시작할 수 있습니다." : "새 게임을 시작하지 못했습니다.");
     }
   }
