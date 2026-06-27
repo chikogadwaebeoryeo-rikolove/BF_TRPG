@@ -144,7 +144,7 @@ export class RoomHub extends DurableObject {
     safe.case = { id: gameCase.id, victim: gameCase.victim, scene: gameCase.scene };
     safe.players = safe.players.map((player) => ({
       ...player,
-      role: player.name === viewer ? player.role : player.host ? "경찰" : null
+      role: player.name === viewer || player.role === "경찰" ? player.role : null
     }));
     delete safe.banned;
     return safe;
@@ -154,12 +154,16 @@ export class RoomHub extends DurableObject {
     return room.players.some((player) => player.name === name && player.host);
   }
 
+  isPolice(room, name) {
+    return room.players.some((player) => player.name === name && player.role === "경찰");
+  }
+
   hasPlayer(room, name) {
     return room.players.some((player) => player.name === name);
   }
 
   suspects(room) {
-    return room.players.filter((player) => !player.host);
+    return room.started ? room.players.filter((player) => player.role !== "경찰") : room.players.filter((player) => !player.host);
   }
 
   speaker(room) {
@@ -237,14 +241,15 @@ export class RoomHub extends DurableObject {
     if (!this.isHost(room, name)) return json({ error: "host_only" }, 403);
     if (room.started) return json(this.view(room, name));
     if (room.players.length < 3) return json({ error: "need_three_players" }, 409);
-    const suspects = this.suspects(room);
+    const police = shuffle(room.players)[0]?.name;
+    const suspects = room.players.filter((player) => player.name !== police);
     const mafia = shuffle(suspects)[0]?.name;
     const jobs = jobPool(body.jobs);
     const culpritJob = caseJob(room.case?.culprit, jobs);
     const pool = shuffle(jobs.filter((job) => job !== culpritJob));
     let jobIndex = 0;
     room.players = room.players.map((player) => {
-      if (player.host) return { ...player, role: "경찰", job: "수사관", score: player.score || 0 };
+      if (player.name === police) return { ...player, role: "경찰", job: "수사관", score: player.score || 0 };
       const mafiaPlayer = player.name === mafia;
       const job = mafiaPlayer && culpritJob ? culpritJob : pool[jobIndex++ % Math.max(pool.length, 1)] || "용의자";
       return { ...player, role: mafiaPlayer ? "마피아" : "시민", job, score: player.score || 0 };
@@ -258,6 +263,7 @@ export class RoomHub extends DurableObject {
     room.final = null;
     room.speech = suspects.length ? { type: "opening", index: 0 } : null;
     room.history.push("게임 시작");
+    room.history.push(`경찰은 ${police}입니다.`);
     room.history.push("시작 발언을 진행합니다.");
     return json(this.view(await this.save(room), name));
   }
@@ -266,7 +272,7 @@ export class RoomHub extends DurableObject {
     const room = this.normalize(await this.data());
     if (!room) return json({ error: "room_not_found" }, 404);
     const name = text(body.name, 16);
-    if (!this.isHost(room, name)) return json({ error: "host_only" }, 403);
+    if (!this.isPolice(room, name)) return json({ error: "police_only" }, 403);
     if (!room.started || room.speech || room.active || room.phase > 1) return json({ error: "bad_state" }, 409);
     if (room.used >= 3) return json({ error: "hand_locked" }, 409);
     if (room.rerolls >= 3) return json({ error: "reroll_limit" }, 409);
@@ -283,10 +289,10 @@ export class RoomHub extends DurableObject {
     const question = text(body.question, 180);
     const target = text(body.target, 16);
     if (!room.started) return json({ error: "not_started" }, 409);
-    if (!this.isHost(room, name)) return json({ error: "host_only" }, 403);
+    if (!this.isPolice(room, name)) return json({ error: "police_only" }, 403);
     if (room.speech || room.active || room.phase > 1 || room.used >= 3) return json({ error: "bad_state" }, 409);
     const targetPlayer = room.players.find((player) => player.name === target);
-    if (!question || !targetPlayer || targetPlayer.host || !room.hand.includes(question)) return json({ error: "bad_question" }, 400);
+    if (!question || !targetPlayer || targetPlayer.role === "경찰" || !room.hand.includes(question)) return json({ error: "bad_question" }, 400);
     room.used += 1;
     room.hand = room.hand.filter((item) => item !== question);
     room.active = { question, target };
@@ -343,7 +349,7 @@ export class RoomHub extends DurableObject {
     if (!room) return json({ error: "room_not_found" }, 404);
     const name = text(body.name, 16);
     const target = text(body.target, 16);
-    if (!this.isHost(room, name)) return json({ error: "host_only" }, 403);
+    if (!this.isPolice(room, name)) return json({ error: "police_only" }, 403);
     if (!room.started || room.active || room.final?.done) return json({ error: "bad_state" }, 409);
     const suspect = this.suspects(room).find((player) => player.name === target);
     if (!suspect) return json({ error: "bad_target" }, 400);
@@ -363,7 +369,7 @@ export class RoomHub extends DurableObject {
     if (!room) return json({ error: "room_not_found" }, 404);
     const name = text(body.name, 16);
     const guess = text(body.weapon, 30);
-    if (!this.isHost(room, name)) return json({ error: "host_only" }, 403);
+    if (!this.isPolice(room, name)) return json({ error: "police_only" }, 403);
     if (!room.final?.suspectCorrect || room.final.done) return json({ error: "bad_state" }, 409);
     if (!guess) return json({ error: "weapon_required" }, 400);
     const correct = clean(guess) === clean(room.case?.weapon);
@@ -381,7 +387,7 @@ export class RoomHub extends DurableObject {
     const target = text(body.target, 16);
     if (!this.isHost(room, name)) return json({ error: "host_only" }, 403);
     const targetPlayer = room.players.find((player) => player.name === target);
-    if (!targetPlayer || targetPlayer.host) return json({ error: "bad_target" }, 400);
+    if (!targetPlayer || targetPlayer.host || targetPlayer.role === "경찰") return json({ error: "bad_target" }, 400);
     const kickedSpeaker = this.speaker(room)?.name === target;
     room.banned = [...new Set([...room.banned, target])];
     room.players = room.players.filter((player) => player.name !== target);

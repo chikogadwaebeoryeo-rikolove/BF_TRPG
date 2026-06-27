@@ -33,6 +33,10 @@
     return Boolean(localPlayer()?.host);
   }
 
+  function isPolice() {
+    return localPlayer()?.role === "경찰";
+  }
+
   function changed(key, value) {
     if (multi[key] === value) return false;
     multi[key] = value;
@@ -50,10 +54,10 @@
       item.className = "player-row";
       info.className = "player-main";
       name.textContent = `${player.name}${player.name === multi.currentName ? " (나)" : ""}`;
-      detail.textContent = `${player.job || (player.host ? "수사관" : "직업 대기")} · ${player.role || (player.host ? "경찰" : "역할 비공개")} · ${player.score || 0}점${player.host ? " · 방장" : ""}`;
+      detail.textContent = `${player.job || "직업 대기"} · ${player.role || "역할 비공개"} · ${player.score || 0}점${player.host ? " · 방장" : ""}`;
       info.append(name, detail);
       item.appendChild(info);
-      if (isHost() && !player.host) {
+      if (isHost() && !player.host && player.role !== "경찰") {
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "kick-button";
@@ -67,7 +71,7 @@
 
   function suspects() {
     if (!multi.room) return [];
-    return multi.room.players.filter((player) => !player.host);
+    return multi.room.started ? multi.room.players.filter((player) => player.role !== "경찰") : multi.room.players.filter((player) => !player.host);
   }
 
   function speaker() {
@@ -220,13 +224,13 @@
     const blocked = !room.started || Boolean(room.speech) || Boolean(room.active) || Boolean(room.final) || room.phase > 1 || room.used >= 3;
     const hand = room.hand || [];
     const drawQuestions = changed("handSig", hand.join("\n"));
-    $("multi-question-state").textContent = !room.started ? "3명 이상 입장 후 시작" : room.speech ? "발언 진행 중" : room.active ? `${room.active.target} 답변 대기` : isHost() ? `${room.used}/3 질문` : "경찰 질문 대기";
+    $("multi-question-state").textContent = !room.started ? "3명 이상 입장 후 시작" : room.speech ? "발언 진행 중" : room.active ? `${room.active.target} 답변 대기` : isPolice() ? `${room.used}/3 질문` : "경찰 질문 대기";
     $("multi-question-list").replaceChildren();
     $("multi-target-list").replaceChildren();
     hand.forEach((text, index) => {
       const btn = document.createElement("button");
       btn.className = `question-card ${multi.selectedQuestion === text ? "selected" : ""}`;
-      btn.disabled = !isHost() || blocked;
+      btn.disabled = !isPolice() || blocked;
       btn.innerHTML = `<strong>질문 ${index + 1}</strong><span>${text}</span>`;
       btn.addEventListener("click", () => {
         multi.selectedQuestion = text;
@@ -240,14 +244,14 @@
     suspects().forEach((player) => {
       const btn = document.createElement("button");
       btn.className = "suspect-card";
-      btn.disabled = !isHost() || blocked || !multi.selectedQuestion;
+      btn.disabled = !isPolice() || blocked || !multi.selectedQuestion;
       btn.innerHTML = `<strong>${player.name}</strong><span>${player.job || "직업 미정"}</span>`;
       btn.addEventListener("click", () => ask(player.name));
       $("multi-target-list").appendChild(btn);
     });
     if (drawTargets && suspects().length) window.App.animateCards(Array.from($("multi-target-list").children));
     $("btn-reroll-multi-hand").textContent = `패 리롤 (${rerolls}/3)`;
-    $("btn-reroll-multi-hand").disabled = multi.rerolling || !isHost() || !room.started || Boolean(room.speech) || Boolean(room.active) || Boolean(room.final) || room.phase > 1 || room.used >= 3 || rerolls >= 3;
+    $("btn-reroll-multi-hand").disabled = multi.rerolling || !isPolice() || !room.started || Boolean(room.speech) || Boolean(room.active) || Boolean(room.final) || room.phase > 1 || room.used >= 3 || rerolls >= 3;
   }
 
   async function ask(target) {
@@ -315,7 +319,7 @@
   }
 
   function finalText(final) {
-    if (!final) return finalEnabled() ? isHost() ? "범인 지목 가능" : "경찰 지목 가능" : "게임 시작 후 가능";
+    if (!final) return finalEnabled() ? isPolice() ? "범인 지목 가능" : "경찰 지목 가능" : "게임 시작 후 가능";
     if (final.suspectCorrect && !final.done) return "무기까지 맞춰야 정답";
     if (!final.suspectCorrect) return "범인 지목 실패";
     return final.weaponCorrect ? "정답 처리 완료" : "무기 지목 실패";
@@ -325,8 +329,8 @@
     const { $ } = window.App;
     const room = multi.room;
     const final = room?.final;
-    const canAccuse = isHost() && finalEnabled() && !final;
-    const canGuessWeapon = isHost() && final?.suspectCorrect && !final.done;
+    const canAccuse = isPolice() && finalEnabled() && !final;
+    const canGuessWeapon = isPolice() && final?.suspectCorrect && !final.done;
     $("multi-final-state").textContent = finalText(final);
     $("multi-final-suspects").replaceChildren();
     suspects().forEach((player) => {
