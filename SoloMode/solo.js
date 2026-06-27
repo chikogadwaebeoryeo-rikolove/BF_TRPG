@@ -76,7 +76,7 @@
   function openingLines() {
     solo.log.push("시작 알리바이");
     solo.suspects.forEach((suspect) => {
-      solo.log.push(`${suspect.name}(${suspect.job}) 알리바이: ${alibiLine(suspect)}`);
+      solo.log.push(`${suspect.name}(${suspect.job}) : ${alibiLine(suspect)}`);
     });
   }
 
@@ -176,8 +176,8 @@
   function answerQuestion(suspect) {
     if (!solo.selected) return;
     solo.used += 1;
-    solo.log.push(`${suspect.name}(${suspect.job}) 질문: ${solo.selected.text}`);
-    solo.log.push(`${suspect.name} 답변: ${directAnswer(suspect, solo.selected.text)}`);
+    solo.log.push(`경찰 : ${solo.selected.text}`);
+    solo.log.push(`${suspect.name}(${suspect.job}) : ${directAnswer(suspect, solo.selected.text)}`);
     solo.hand.splice(solo.selected.index, 1);
     solo.selected = null;
     render();
@@ -198,20 +198,19 @@
   function renderLog() {
     const { $ } = window.App;
     const box = $("case-log");
-    const base = solo.selected ? [`선택한 질문: ${solo.selected.text}`, "답변할 용의자를 선택하십시오."] : ["질문카드를 선택한 뒤 용의자를 선택하십시오."];
+    const base = solo.selected ? [`경찰 : ${solo.selected.text}`, "답변할 용의자를 선택하십시오."] : ["질문카드를 선택한 뒤 용의자를 선택하십시오."];
     const lines = solo.log.length ? solo.log : base;
     box.replaceChildren(...lines.map((text) => {
       const line = document.createElement("div");
       line.textContent = text;
       return line;
     }));
-    box.scrollTop = box.scrollHeight;
   }
 
   function closingLines() {
     solo.log.push("마지막 발언");
     solo.suspects.forEach((suspect) => {
-      solo.log.push(`${suspect.name}: ${closingLine()}`);
+      solo.log.push(`${suspect.name}(${suspect.job}) : ${closingLine()}`);
     });
   }
 
