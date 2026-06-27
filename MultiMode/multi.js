@@ -79,6 +79,16 @@
     return suspects()[multi.room.speech.index] || null;
   }
 
+  function renderPanels() {
+    const playing = Boolean(multi.room?.started);
+    ["multi-talk-panel", "multi-action-panel"].forEach((id) => {
+      window.App.$(id).classList.toggle("hidden", !playing);
+    });
+    window.App.$("multi-case-panel").classList.add("hidden");
+    window.App.$("multi-memo-panel").classList.add("hidden");
+    window.App.$("multi-lobby-panel").classList.toggle("hidden", playing);
+  }
+
   function syncRole() {
     const { setRole, state, renderRoleProfile } = window.App;
     const player = localPlayer();
@@ -188,6 +198,7 @@
     $("room-share-text").textContent = room.started ? "게임이 시작되었습니다." : "다른 플레이어는 이 링크로 접속한 뒤 방 코드를 입력합니다.";
     $("room-url").textContent = share;
     $("room-player-count").textContent = `${room.players.length}/15`;
+    renderPanels();
     renderPlayers();
     $("btn-start-room").classList.toggle("hidden", room.started || !isHost());
     $("btn-start-room").disabled = room.players.length < 3;
@@ -195,26 +206,27 @@
     $("multi-case-victim").textContent = `피해자: ${gameCase.victim || "미상"}`;
     $("multi-case-weapon").textContent = room.private?.weapon || "미확인";
     $("multi-case-scene").textContent = gameCase.scene || "미상";
-    if (changed("caseSig", [gameCase.victim || "", room.private?.weapon || "", gameCase.scene || ""].join("|"))) window.App.animateCards([$("multi-case-victim"), $("multi-case-weapon").parentElement, $("multi-case-scene").parentElement]);
+    $("multi-case-line").textContent = `피해자: ${gameCase.victim || "미상"} · 무기: ${room.private?.weapon || "미확인"} · 현장: ${gameCase.scene || "미상"}`;
+    changed("caseSig", [gameCase.victim || "", room.private?.weapon || "", gameCase.scene || ""].join("|"));
     $("mafia-case-brief").classList.toggle("hidden", !room.private?.overview);
     $("mafia-case-story").textContent = room.private?.overview || "";
-    renderSpeechControl();
+    renderTalkControl();
     renderQuestionControl();
-    renderAnswerBox();
     renderFinalControl();
     renderMultiLog();
-    renderChat();
   }
 
-  function renderSpeechControl() {
+  function renderTalkControl() {
     const { $ } = window.App;
     const current = speaker();
+    const active = multi.room?.active;
+    const canAnswer = Boolean(active && active.target === multi.currentName);
     const canSpeak = Boolean(current && current.name === multi.currentName);
-    $("speech-state").textContent = current ? `${current.name} 발언 차례` : multi.room?.started ? "발언 대기 없음" : "대기 중";
-    $("speech-guide").textContent = current ? `${current.name}만 발언할 수 있습니다.` : "게임 시작 후 용의자가 차례대로 발언합니다.";
-    $("speech-input").disabled = !canSpeak;
-    $("btn-submit-speech").disabled = !canSpeak;
-    if (!canSpeak) $("speech-input").value = "";
+    $("talk-state").textContent = canAnswer ? `${active.target} 답변 차례` : canSpeak ? `${current.name} 발언 차례` : active ? `${active.target} 답변 대기` : current ? `${current.name} 발언 대기` : "자유 채팅";
+    $("multi-talk-input").placeholder = canAnswer ? `답변 입력: ${active.question}` : canSpeak ? "알리바이 또는 발언 입력" : "메시지 입력";
+    $("btn-submit-talk").textContent = canAnswer ? "답변 전송" : canSpeak ? "발언 전송" : "채팅 전송";
+    $("multi-talk-input").disabled = !multi.room?.started;
+    $("btn-submit-talk").disabled = !multi.room?.started;
   }
 
   function renderQuestionControl() {
@@ -289,30 +301,6 @@
     }
   }
 
-  function renderAnswerBox() {
-    const { $ } = window.App;
-    const active = multi.room?.active;
-    const canAnswer = Boolean(active && active.target === multi.currentName);
-    $("multi-answer-input").disabled = !canAnswer;
-    $("btn-submit-answer").disabled = !canAnswer;
-    $("answer-guide").textContent = active ? `${active.target}만 답변할 수 있습니다. 질문: ${active.question}` : "선택된 용의자만 답변할 수 있습니다.";
-    if (!canAnswer) $("multi-answer-input").value = "";
-  }
-
-  async function submitAnswer() {
-    const { $, questions, toast } = window.App;
-    const text = $("multi-answer-input").value.trim();
-    if (!text) return toast("답변을 입력하십시오.");
-    if (!multi.room.active || multi.room.active.target !== multi.currentName) return toast("선택된 용의자만 답변할 수 있습니다.");
-    try {
-      multi.room = await api("/api/rooms/answer", { code: multi.room.code, name: multi.currentName, text, questions });
-      $("multi-answer-input").value = "";
-      renderRoom();
-    } catch (error) {
-      toast("선택된 용의자만 답변할 수 있습니다.");
-    }
-  }
-
   function finalEnabled() {
     const room = multi.room;
     return Boolean(room?.started && !room.active && !room.final?.done);
@@ -382,36 +370,36 @@
     }
   }
 
-  async function submitSpeech() {
-    const { $, toast } = window.App;
-    const text = $("speech-input").value.trim();
-    if (!text) return toast("발언을 입력하십시오.");
-    try {
-      multi.room = await api("/api/rooms/speech", { code: multi.room.code, name: multi.currentName, text });
-      $("speech-input").value = "";
-      renderRoom();
-    } catch (error) {
-      toast("현재 발언 차례가 아닙니다.");
-    }
-  }
-
-  async function submitChat() {
-    const { $, toast } = window.App;
-    const text = $("chat-input").value.trim();
+  async function submitTalk() {
+    const { $, questions, toast } = window.App;
+    const text = $("multi-talk-input").value.trim();
+    const active = multi.room?.active;
+    const current = speaker();
     if (!text || !multi.room) return;
     try {
-      multi.room = await api("/api/rooms/chat", { code: multi.room.code, name: multi.currentName, text });
-      $("chat-input").value = "";
+      if (active && active.target === multi.currentName) {
+        multi.room = await api("/api/rooms/answer", { code: multi.room.code, name: multi.currentName, text, questions });
+      } else if (current && current.name === multi.currentName) {
+        multi.room = await api("/api/rooms/speech", { code: multi.room.code, name: multi.currentName, text });
+      } else {
+        multi.room = await api("/api/rooms/chat", { code: multi.room.code, name: multi.currentName, text });
+      }
+      $("multi-talk-input").value = "";
       renderRoom();
     } catch (error) {
-      toast("채팅을 보내지 못했습니다.");
+      toast(active?.target === multi.currentName ? "답변을 전송하지 못했습니다." : current?.name === multi.currentName ? "현재 발언 차례가 아닙니다." : "채팅을 보내지 못했습니다.");
     }
   }
 
   function renderMultiLog() {
     const { $ } = window.App;
     const lines = [...(multi.room.history || [])];
-    if (!lines.length) lines.push("3명 이상 모이면 경찰이 게임을 시작할 수 있습니다.");
+    if (multi.room.active) {
+      lines.push(`경찰 : ${multi.room.active.question}`);
+      lines.push(`${multi.room.active.target} 답변 대기`);
+    }
+    if (multi.room.chat?.length) lines.push(...multi.room.chat);
+    if (!lines.length) lines.push("아직 진행 기록이 없습니다.");
     $("multi-log").replaceChildren(...lines.map((text) => {
       const line = document.createElement("div");
       line.textContent = text;
@@ -419,17 +407,5 @@
     }));
   }
 
-  function renderChat() {
-    const { $ } = window.App;
-    const lines = [...(multi.room.chat || [])];
-    $("chat-state").textContent = multi.room.started ? "전체 채팅" : "대기실 채팅";
-    $("chat-input").disabled = false;
-    $("multi-chat-log").replaceChildren(...(lines.length ? lines : ["아직 채팅이 없습니다."]).map((text) => {
-      const line = document.createElement("div");
-      line.textContent = text;
-      return line;
-    }));
-  }
-
-  window.MultiMode = { createRoom, joinRoom, refreshRoom, startRoom, rerollHand, submitAnswer, submitSpeech, submitChat, submitWeapon, kickPlayer };
+  window.MultiMode = { createRoom, joinRoom, refreshRoom, startRoom, rerollHand, submitTalk, submitWeapon, kickPlayer };
 })();

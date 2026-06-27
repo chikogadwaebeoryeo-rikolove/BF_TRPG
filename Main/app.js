@@ -255,12 +255,10 @@
     $("btn-refresh-room").addEventListener("click", () => window.MultiMode.refreshRoom());
     $("btn-start-room").addEventListener("click", () => window.MultiMode.startRoom());
     $("btn-reroll-multi-hand").addEventListener("click", () => window.MultiMode.rerollHand());
-    $("btn-submit-speech").addEventListener("click", () => window.MultiMode.submitSpeech());
-    $("btn-submit-answer").addEventListener("click", () => window.MultiMode.submitAnswer());
     $("btn-submit-weapon").addEventListener("click", () => window.MultiMode.submitWeapon());
-    $("chat-form").addEventListener("submit", (event) => {
+    $("multi-talk-form").addEventListener("submit", (event) => {
       event.preventDefault();
-      window.MultiMode.submitChat();
+      window.MultiMode.submitTalk();
     });
     $("role-profile").addEventListener("click", (event) => event.preventDefault());
     $("role-profile").addEventListener("pointerdown", showHeldRole);
