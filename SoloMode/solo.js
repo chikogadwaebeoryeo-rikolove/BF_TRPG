@@ -130,10 +130,13 @@
   function renderSuspects() {
     const { $ } = window.App;
     $("suspect-list").replaceChildren(...solo.suspects.map((suspect) => {
-      const card = document.createElement(solo.selected && solo.phase < 2 ? "button" : "div");
+      const activeQuestion = solo.selected && solo.phase < 2;
+      const accusing = solo.phase === 3;
+      const card = document.createElement(activeQuestion || accusing ? "button" : "div");
       card.className = "suspect-card";
       card.innerHTML = `<strong>${suspect.name}</strong><span>${suspect.job}</span>`;
-      if (solo.selected && solo.phase < 2) card.addEventListener("click", () => answerQuestion(suspect));
+      if (activeQuestion) card.addEventListener("click", () => answerQuestion(suspect));
+      if (accusing) card.addEventListener("click", () => revealResult(suspect));
       return card;
     }));
     if (solo.motion.suspects) window.App.animateCards(Array.from($("suspect-list").children));
@@ -254,6 +257,7 @@
       closingLines();
     } else if (solo.phase === 2) {
       solo.phase = 3;
+      toast("위 용의자 카드에서 범인을 선택하십시오.");
     }
     render();
   }
@@ -261,17 +265,8 @@
   function renderFinalPick() {
     const { $ } = window.App;
     const box = $("final-pick");
-    box.classList.toggle("hidden", solo.phase === 4);
+    box.classList.add("hidden");
     box.replaceChildren();
-    if (solo.phase === 4) return;
-    solo.suspects.forEach((suspect) => {
-      const btn = document.createElement("button");
-      btn.className = "suspect-card";
-      btn.innerHTML = `<strong>${suspect.name}</strong><span>${suspect.job}</span>`;
-      btn.addEventListener("click", () => revealResult(suspect));
-      box.appendChild(btn);
-    });
-    if (solo.motion.final) window.App.animateCards(Array.from(box.children));
   }
 
   function revealResult(suspect) {

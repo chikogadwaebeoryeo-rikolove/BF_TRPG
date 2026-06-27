@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Omega Byte</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="./styles.css?v=20260627-3">
-  <link rel="stylesheet" href="../SoloMode/solo.css?v=20260627-3">
-  <link rel="stylesheet" href="../MultiMode/multi.css?v=20260627-3">
+  <link rel="stylesheet" href="./styles.css?v=20260627-4">
+  <link rel="stylesheet" href="../SoloMode/solo.css?v=20260627-4">
+  <link rel="stylesheet" href="../MultiMode/multi.css?v=20260627-4">
 </head>
 <body>
   <canvas id="particle-canvas"></canvas>
@@ -127,7 +127,7 @@
       </section>
 
       <section id="multi-room" class="game-grid hidden">
-        <article class="panel wide">
+        <article id="multi-lobby-panel" class="panel wide">
           <div class="section-head">
             <span>방 코드</span>
             <strong id="room-code-label"></strong>
@@ -137,7 +137,7 @@
           <button id="btn-start-room" class="primary-button full">게임 시작</button>
         </article>
 
-        <article class="panel">
+        <article id="multi-player-panel" class="panel wide">
           <div class="section-head">
             <span>참여자</span>
             <strong id="room-player-count"></strong>
@@ -145,19 +145,7 @@
           <ul id="room-player-list" class="card-list"></ul>
         </article>
 
-        <article class="panel">
-          <div class="section-head">
-            <span>멀티 규칙</span>
-            <strong>경찰 · 시민 · 마피아</strong>
-          </div>
-          <ul class="card-list">
-            <li>경찰 1명은 시작 시 랜덤으로 공개됩니다.</li>
-            <li>경찰을 제외한 플레이어는 용의자카드를 받습니다.</li>
-            <li>질문카드는 1차 3개, 2차 3개만 사용합니다.</li>
-          </ul>
-        </article>
-
-        <article class="panel wide">
+        <article id="multi-case-panel" class="panel wide multi-playing">
           <div class="section-head">
             <span>공유 사건</span>
             <strong id="multi-case-meta"></strong>
@@ -173,14 +161,10 @@
               <strong id="multi-case-scene"></strong>
             </div>
           </div>
-          <div id="mafia-case-brief" class="private-brief hidden">
-            <span>범인 전용 사건 개요</span>
-            <p id="mafia-case-story"></p>
-          </div>
           <button id="btn-refresh-room" class="secondary-button">상태 새로고침</button>
         </article>
 
-        <article class="panel">
+        <article id="multi-memo-panel" class="panel multi-playing">
           <div class="section-head">
             <span>메모</span>
             <strong>저장됨</strong>
@@ -188,39 +172,31 @@
           <textarea id="multi-case-memo" class="case-memo" maxlength="900" placeholder="추리 메모"></textarea>
         </article>
 
-        <article class="panel wide">
+        <article id="multi-talk-panel" class="panel wide multi-playing">
           <div class="section-head">
-            <span>발언</span>
-            <strong id="speech-state"></strong>
+            <span>진행 채팅</span>
+            <strong id="talk-state"></strong>
           </div>
-          <div class="answer-box">
-            <label class="field">
-              <span id="speech-guide">게임 시작 후 차례대로 발언합니다.</span>
-              <textarea id="speech-input" maxlength="300" placeholder="발언 입력"></textarea>
-            </label>
-            <button id="btn-submit-speech" class="primary-button full">발언 등록</button>
+          <div id="multi-case-line" class="code-box case-line"></div>
+          <div id="mafia-case-brief" class="private-brief hidden">
+            <span>범인 전용 사건 개요</span>
+            <p id="mafia-case-story"></p>
           </div>
+          <div id="multi-log" class="case-log talk-log"></div>
+          <form id="multi-talk-form" class="chat-form talk-form">
+            <textarea id="multi-talk-input" maxlength="300" placeholder="메시지 입력"></textarea>
+            <button id="btn-submit-talk" class="secondary-button" type="submit">전송</button>
+          </form>
         </article>
 
-        <article class="panel wide">
+        <article id="multi-action-panel" class="panel wide multi-playing">
           <div class="section-head">
-            <span>질문 진행</span>
+            <span>질문 / 지목</span>
             <strong id="multi-question-state"></strong>
           </div>
           <div id="multi-question-list" class="question-list"></div>
           <div id="multi-target-list" class="suspect-list"></div>
           <button id="btn-reroll-multi-hand" class="secondary-button full">패 리롤</button>
-          <div class="answer-box">
-            <label class="field">
-              <span id="answer-guide">선택된 용의자만 답변할 수 있습니다.</span>
-              <textarea id="multi-answer-input" maxlength="300" placeholder="답변 입력"></textarea>
-            </label>
-            <button id="btn-submit-answer" class="primary-button full">답변 등록</button>
-          </div>
-          <div id="multi-log" class="case-log"></div>
-        </article>
-
-        <article class="panel wide">
           <div class="section-head">
             <span>최종 지목</span>
             <strong id="multi-final-state"></strong>
@@ -233,18 +209,6 @@
             </label>
             <button id="btn-submit-weapon" class="primary-button full">무기 지목</button>
           </div>
-        </article>
-
-        <article class="panel wide">
-          <div class="section-head">
-            <span>채팅</span>
-            <strong id="chat-state"></strong>
-          </div>
-          <div id="multi-chat-log" class="case-log"></div>
-          <form id="chat-form" class="chat-form">
-            <input id="chat-input" maxlength="180" placeholder="메시지">
-            <button class="secondary-button" type="submit">전송</button>
-          </form>
         </article>
       </section>
     </section>
@@ -321,9 +285,9 @@
   </div>
 
   <div id="toast"><span id="toast-text"></span></div>
-  <script src="./app.js?v=20260627-3" defer></script>
-  <script src="../SoloMode/solo.js?v=20260627-3" defer></script>
-  <script src="../MultiMode/config.js?v=20260627-3" defer></script>
-  <script src="../MultiMode/multi.js?v=20260627-3" defer></script>
+  <script src="./app.js?v=20260627-4" defer></script>
+  <script src="../SoloMode/solo.js?v=20260627-4" defer></script>
+  <script src="../MultiMode/config.js?v=20260627-4" defer></script>
+  <script src="../MultiMode/multi.js?v=20260627-4" defer></script>
 </body>
 </html>
