@@ -32,7 +32,21 @@ const json = (data, status = 200) => new Response(JSON.stringify(data), {
 
 const text = (value, max = 300) => String(value || "").trim().slice(0, max);
 const roomCode = () => Array.from({ length: 6 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]).join("");
-const shuffle = (list) => [...list].sort(() => Math.random() - 0.5);
+const randomInt = (max) => {
+  if (max <= 0) return 0;
+  const values = new Uint32Array(1);
+  crypto.getRandomValues(values);
+  return values[0] % max;
+};
+const pickOne = (list) => list[randomInt(list.length)];
+const shuffle = (list) => {
+  const copy = [...list];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = randomInt(i + 1);
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+};
 const hand = (questions) => shuffle(Array.isArray(questions) && questions.length ? questions.map((item) => text(item, 180)).filter(Boolean) : fallbackQuestions).slice(0, 5);
 const uniqueTexts = (list, max = 30) => [...new Set((Array.isArray(list) ? list : []).map((item) => text(item, max)).filter(Boolean))];
 const clean = (value) => text(value, 80).replace(/\s+/g, "").toLowerCase();
@@ -42,7 +56,7 @@ const jobPool = (jobs) => {
 };
 const caseJob = (value, jobs) => {
   const wanted = text(value, 30);
-  return jobs.includes(wanted) ? wanted : shuffle(jobs)[0] || "용의자";
+  return jobs.includes(wanted) ? wanted : pickOne(jobs) || "용의자";
 };
 
 async function readBody(request) {
@@ -239,9 +253,9 @@ export class RoomHub extends DurableObject {
 
   begin(room, body, title) {
     room.case = body.case && typeof body.case === "object" ? body.case : room.case;
-    const police = shuffle(room.players)[0]?.name;
+    const police = pickOne(room.players)?.name;
     const suspects = room.players.filter((player) => player.name !== police);
-    const mafia = shuffle(suspects)[0]?.name;
+    const mafia = pickOne(suspects)?.name;
     const jobs = jobPool(body.jobs);
     const culpritJob = caseJob(room.case?.culprit, jobs);
     const pool = shuffle(jobs.filter((job) => job !== culpritJob));
@@ -424,6 +438,7 @@ export class RoomHub extends DurableObject {
     const name = text(body.name, 16);
     const message = text(body.text, 180);
     if (!this.hasPlayer(room, name)) return json({ error: "player_only" }, 403);
+    if (room.active || room.speech) return json({ error: "turn_locked" }, 409);
     if (!message) return json({ error: "empty_chat" }, 400);
     room.chat.push(`${name} : ${message}`);
     return json(this.view(await this.save(room), name));

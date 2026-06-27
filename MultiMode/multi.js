@@ -253,11 +253,13 @@
     const active = multi.room?.active;
     const canAnswer = Boolean(active && active.target === multi.currentName);
     const canSpeak = Boolean(current && current.name === multi.currentName);
+    const canChat = Boolean(multi.room?.started && !active && !current);
+    const canSend = canAnswer || canSpeak || canChat;
     $("talk-state").textContent = canAnswer ? `${active.target} 답변 차례` : canSpeak ? `${current.name} 발언 차례` : active ? `${active.target} 답변 대기` : current ? `${current.name} 발언 대기` : "자유 채팅";
-    $("multi-talk-input").placeholder = canAnswer ? `답변 입력: ${active.question}` : canSpeak ? "알리바이 또는 발언 입력" : "메시지 입력";
+    $("multi-talk-input").placeholder = canAnswer ? `답변 입력: ${active.question}` : canSpeak ? "알리바이 또는 발언 입력" : active ? `${active.target} 답변 차례입니다` : current ? `${current.name} 발언 차례입니다` : "메시지 입력";
     $("btn-submit-talk").textContent = canAnswer ? "답변 전송" : canSpeak ? "발언 전송" : "채팅 전송";
-    $("multi-talk-input").disabled = !multi.room?.started;
-    $("btn-submit-talk").disabled = !multi.room?.started;
+    $("multi-talk-input").disabled = !canSend;
+    $("btn-submit-talk").disabled = !canSend;
   }
 
   function renderQuestionControl() {
@@ -429,6 +431,8 @@
     const active = multi.room?.active;
     const current = speaker();
     if (!text || !multi.room) return;
+    if (active && active.target !== multi.currentName) return toast(`${active.target} 답변 차례입니다.`);
+    if (current && current.name !== multi.currentName) return toast(`${current.name} 발언 차례입니다.`);
     try {
       if (active && active.target === multi.currentName) {
         multi.room = await api("/api/rooms/answer", { code: multi.room.code, name: multi.currentName, text, questions });
@@ -447,17 +451,21 @@
   function renderMultiLog() {
     const { $ } = window.App;
     const lines = [...(multi.room.history || [])];
+    const log = $("multi-log");
     if (multi.room.active) {
       lines.push(`경찰 : ${multi.room.active.question}`);
       lines.push(`${multi.room.active.target} 답변 대기`);
     }
     if (multi.room.chat?.length) lines.push(...multi.room.chat);
     if (!lines.length) lines.push("아직 진행 기록이 없습니다.");
-    $("multi-log").replaceChildren(...lines.map((text) => {
+    log.replaceChildren(...lines.map((text) => {
       const line = document.createElement("div");
       line.textContent = text;
       return line;
     }));
+    requestAnimationFrame(() => {
+      log.scrollTop = log.scrollHeight;
+    });
   }
 
   window.MultiMode = { createRoom, joinRoom, refreshRoom, startRoom, newGame, rerollHand, toggleAccuse, submitTalk, submitWeapon, kickPlayer };
