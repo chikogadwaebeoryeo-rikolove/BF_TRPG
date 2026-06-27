@@ -249,12 +249,13 @@
       window.MultiMode.joinRoom(code);
     });
     $("btn-back-lobby").addEventListener("click", showLobby);
-    $("btn-new-case").addEventListener("click", () => state.mode === "solo" ? window.SoloMode.start() : window.MultiMode.refreshRoom());
+    $("btn-new-case").addEventListener("click", () => state.mode === "solo" ? window.SoloMode.start() : window.MultiMode.newGame());
     $("btn-next-phase").addEventListener("click", () => window.SoloMode.nextPhase());
     $("btn-reroll-hand").addEventListener("click", () => window.SoloMode.rerollHand());
     $("btn-refresh-room").addEventListener("click", () => window.MultiMode.refreshRoom());
     $("btn-start-room").addEventListener("click", () => window.MultiMode.startRoom());
     $("btn-reroll-multi-hand").addEventListener("click", () => window.MultiMode.rerollHand());
+    $("btn-open-accuse").addEventListener("click", () => window.MultiMode.toggleAccuse());
     $("btn-submit-weapon").addEventListener("click", () => window.MultiMode.submitWeapon());
     $("multi-talk-form").addEventListener("submit", (event) => {
       event.preventDefault();
