@@ -15,6 +15,13 @@
 
 * {
   box-sizing: border-box;
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 html,
@@ -25,12 +32,6 @@ body {
   color: var(--text);
   font-family: Georgia, "Noto Serif KR", serif;
   overflow-x: hidden;
-  scrollbar-width: none;
-}
-
-body::-webkit-scrollbar,
-.modal-card::-webkit-scrollbar {
-  display: none;
 }
 
 button,
@@ -62,7 +63,7 @@ textarea {
 
 textarea {
   min-height: 5.5rem;
-  resize: vertical;
+  resize: none;
 }
 
 input:focus,
@@ -460,6 +461,10 @@ body.session-open #main-title-container {
 
 .case-victim {
   margin: 0 0 0.85rem;
+  border: 1px solid #302a23;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.025);
+  padding: 0.9rem;
   color: #f1e4cc;
   font-size: 1.05rem;
 }
@@ -471,6 +476,7 @@ body.session-open #main-title-container {
 }
 
 .case-brief-grid div {
+  position: relative;
   border: 1px solid #302a23;
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.025);
@@ -527,6 +533,7 @@ body.session-open #main-title-container {
 
 .suspect-card,
 .question-card {
+  position: relative;
   min-height: 5.4rem;
   border: 1px solid #302a23;
   border-radius: var(--radius);
@@ -534,6 +541,8 @@ body.session-open #main-title-container {
   color: var(--text);
   padding: 0.85rem;
   text-align: left;
+  transform-origin: center bottom;
+  will-change: transform, opacity;
 }
 
 .suspect-card strong,
@@ -557,8 +566,47 @@ body.session-open #main-title-container {
   max-height: 18rem;
   overflow-y: auto;
   padding-right: 0.35rem;
-  scrollbar-width: thin;
-  scrollbar-color: var(--gold) #08090b;
+}
+
+.card-draw {
+  animation: cardDraw 0.42s cubic-bezier(0.17, 0.84, 0.44, 1) both;
+  animation-delay: var(--draw-delay, 0ms);
+}
+
+.card-discard {
+  animation: cardDiscard 0.24s ease-in both;
+}
+
+@keyframes cardDraw {
+  0% {
+    opacity: 0;
+    filter: blur(2px);
+    transform: translateY(-2.4rem) rotate(-5deg) scale(0.94);
+  }
+
+  74% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0.2rem) rotate(1deg) scale(1.02);
+  }
+
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0) rotate(0) scale(1);
+  }
+}
+
+@keyframes cardDiscard {
+  0% {
+    opacity: 1;
+    transform: translateY(0) rotate(0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(2rem) rotate(8deg) scale(0.92);
+  }
 }
 
 .chat-form {

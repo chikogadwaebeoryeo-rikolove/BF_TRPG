@@ -344,10 +344,13 @@ export class RoomHub extends DurableObject {
     const name = text(body.name, 16);
     const target = text(body.target, 16);
     if (!this.isHost(room, name)) return json({ error: "host_only" }, 403);
-    if (!room.started || room.phase < 2 || room.speech || room.active || room.final?.done) return json({ error: "bad_state" }, 409);
+    if (!room.started || room.active || room.final?.done) return json({ error: "bad_state" }, 409);
     const suspect = this.suspects(room).find((player) => player.name === target);
     if (!suspect) return json({ error: "bad_target" }, 400);
     const correct = suspect.role === "마피아";
+    room.phase = Math.max(room.phase, 2);
+    room.speech = null;
+    room.hand = [];
     room.final = { suspect: suspect.name, suspectJob: suspect.job || "용의자", suspectCorrect: correct, weapon: null, weaponCorrect: null, done: !correct };
     room.history.push(`경찰이 ${suspect.name}(${suspect.job || "용의자"})을 범인으로 지목했습니다.`);
     room.history.push(correct ? "범인 지목 완료. 무기까지 맞춰야 정답 처리됩니다." : "범인 지목 실패. 사건 해결에 실패했습니다.");

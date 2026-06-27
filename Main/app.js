@@ -2,6 +2,7 @@
   const $ = (id) => document.getElementById(id);
   const $$ = (selector) => Array.from(document.querySelectorAll(selector));
   const pick = (list) => list[Math.floor(Math.random() * list.length)];
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const fallbackCases = [
     {
       id: "001",
@@ -89,6 +90,17 @@
       node.appendChild(item);
     });
     node.style.listStyleType = ordered ? "decimal" : "disc";
+  }
+
+  function animateCard(node, index = 0, type = "draw") {
+    node.classList.remove("card-draw", "card-discard");
+    node.style.setProperty("--draw-delay", `${Math.min(index * 58, 360)}ms`);
+    void node.offsetWidth;
+    node.classList.add(type === "discard" ? "card-discard" : "card-draw");
+  }
+
+  function animateCards(nodes, type = "draw") {
+    nodes.forEach((node, index) => animateCard(node, index, type));
   }
 
   function setMode(mode) {
@@ -291,6 +303,6 @@
     }
   }
 
-  window.App = { $, $$, pick, profiles, questions, names, jobs, roleDefs, state, toast, getJson, fillList, setMode, showLobby, showSession, setRole, showRoleModal, renderRoleProfile };
+  window.App = { $, $$, pick, profiles, questions, names, jobs, roleDefs, state, toast, getJson, fillList, wait, animateCard, animateCards, setMode, showLobby, showSession, setRole, showRoleModal, renderRoleProfile };
   document.addEventListener("DOMContentLoaded", init);
 })();

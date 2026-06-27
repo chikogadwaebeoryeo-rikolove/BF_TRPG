@@ -6,7 +6,7 @@
 
 #multi-answer-input {
   min-height: 5.5rem;
-  resize: vertical;
+  resize: none;
   border: 1px solid #34302a;
   border-radius: var(--radius);
   background: #050607;
