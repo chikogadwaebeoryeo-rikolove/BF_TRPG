@@ -375,7 +375,6 @@
       line.textContent = text;
       return line;
     }));
-    $("multi-log").scrollTop = $("multi-log").scrollHeight;
   }
 
   function renderChat() {
@@ -388,7 +387,6 @@
       line.textContent = text;
       return line;
     }));
-    $("multi-chat-log").scrollTop = $("multi-chat-log").scrollHeight;
   }
 
   window.MultiMode = { createRoom, joinRoom, refreshRoom, startRoom, rerollHand, submitAnswer, submitSpeech, submitChat, submitWeapon, kickPlayer };

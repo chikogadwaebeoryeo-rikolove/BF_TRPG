@@ -300,8 +300,8 @@ export class RoomHub extends DurableObject {
     const reply = text(body.text, 300);
     if (!room.active || room.active.target !== name) return json({ error: "target_only" }, 403);
     if (!reply) return json({ error: "empty_answer" }, 400);
-    room.history.push(`${room.active.target} 질문: ${room.active.question}`);
-    room.history.push(`${room.active.target} 답변: ${reply}`);
+    room.history.push(`경찰 : ${room.active.question}`);
+    room.history.push(`${room.active.target} : ${reply}`);
     room.active = null;
     if (room.used >= 3) {
       if (room.phase === 0) {
@@ -328,7 +328,7 @@ export class RoomHub extends DurableObject {
     if (!speaker || speaker.name !== name) return json({ error: "speaker_only" }, 403);
     if (!message) return json({ error: "empty_speech" }, 400);
     const type = room.speech.type;
-    room.history.push(`${type === "opening" ? "시작 발언" : "마지막 발언"} ${name}: ${message}`);
+    room.history.push(`${type === "opening" ? "시작 발언" : "마지막 발언"} ${name} : ${message}`);
     room.speech.index += 1;
     if (!this.speaker(room)) {
       room.history.push(type === "opening" ? "질문을 시작합니다." : "마지막 발언이 끝났습니다.");
@@ -395,7 +395,7 @@ export class RoomHub extends DurableObject {
     const message = text(body.text, 180);
     if (!this.hasPlayer(room, name)) return json({ error: "player_only" }, 403);
     if (!message) return json({ error: "empty_chat" }, 400);
-    room.chat.push(`${name}: ${message}`);
+    room.chat.push(`${name} : ${message}`);
     return json(this.view(await this.save(room), name));
   }
 }
