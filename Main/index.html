@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Omega Byte</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="./styles.css?v=20260627-4">
-  <link rel="stylesheet" href="../SoloMode/solo.css?v=20260627-4">
-  <link rel="stylesheet" href="../MultiMode/multi.css?v=20260627-4">
+  <link rel="stylesheet" href="./styles.css?v=20260627-5">
+  <link rel="stylesheet" href="../SoloMode/solo.css?v=20260627-5">
+  <link rel="stylesheet" href="../MultiMode/multi.css?v=20260627-5">
 </head>
 <body>
   <canvas id="particle-canvas"></canvas>
@@ -198,10 +198,11 @@
           <div id="multi-target-list" class="suspect-list"></div>
           <button id="btn-reroll-multi-hand" class="secondary-button full">패 리롤</button>
           <div class="section-head">
-            <span>최종 지목</span>
+            <span>범인 지목</span>
             <strong id="multi-final-state"></strong>
           </div>
-          <div id="multi-final-suspects" class="suspect-list"></div>
+          <button id="btn-open-accuse" class="primary-button full">범인 지목하기</button>
+          <div id="multi-final-suspects" class="suspect-list hidden"></div>
           <div id="weapon-guess-panel" class="answer-box hidden">
             <label class="field">
               <span>무기 지목</span>
@@ -285,9 +286,9 @@
   </div>
 
   <div id="toast"><span id="toast-text"></span></div>
-  <script src="./app.js?v=20260627-4" defer></script>
-  <script src="../SoloMode/solo.js?v=20260627-4" defer></script>
-  <script src="../MultiMode/config.js?v=20260627-4" defer></script>
-  <script src="../MultiMode/multi.js?v=20260627-4" defer></script>
+  <script src="./app.js?v=20260627-5" defer></script>
+  <script src="../SoloMode/solo.js?v=20260627-5" defer></script>
+  <script src="../MultiMode/config.js?v=20260627-5" defer></script>
+  <script src="../MultiMode/multi.js?v=20260627-5" defer></script>
 </body>
 </html>

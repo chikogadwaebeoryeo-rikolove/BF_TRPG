@@ -107,6 +107,7 @@ export class RoomHub extends DurableObject {
     if (url.pathname.endsWith("/join")) return this.join(body);
     if (url.pathname.endsWith("/state")) return this.state(body);
     if (url.pathname.endsWith("/start")) return this.start(body);
+    if (url.pathname.endsWith("/restart")) return this.restart(body);
     if (url.pathname.endsWith("/reroll")) return this.reroll(body);
     if (url.pathname.endsWith("/ask")) return this.ask(body);
     if (url.pathname.endsWith("/answer")) return this.answer(body);
@@ -128,6 +129,7 @@ export class RoomHub extends DurableObject {
     room.rerolls ||= 0;
     room.banned ||= [];
     room.phase ||= 0;
+    room.round ||= 0;
     room.started = Boolean(room.started);
     room.final ||= null;
     return room;
@@ -189,6 +191,7 @@ export class RoomHub extends DurableObject {
       speech: null,
       final: null,
       banned: [],
+      round: 0,
       history: ["3명 이상 모이면 경찰이 게임을 시작할 수 있습니다."],
       chat: [],
       updatedAt: Date.now()
@@ -234,13 +237,8 @@ export class RoomHub extends DurableObject {
     room.history.push(team === "mafia" ? "마피아 팀 점수 +1" : "경찰·시민 팀 점수 +1");
   }
 
-  async start(body) {
-    const room = this.normalize(await this.data());
-    if (!room) return json({ error: "room_not_found" }, 404);
-    const name = text(body.name, 16);
-    if (!this.isHost(room, name)) return json({ error: "host_only" }, 403);
-    if (room.started) return json(this.view(room, name));
-    if (room.players.length < 3) return json({ error: "need_three_players" }, 409);
+  begin(room, body, title) {
+    room.case = body.case && typeof body.case === "object" ? body.case : room.case;
     const police = shuffle(room.players)[0]?.name;
     const suspects = room.players.filter((player) => player.name !== police);
     const mafia = shuffle(suspects)[0]?.name;
@@ -258,13 +256,36 @@ export class RoomHub extends DurableObject {
     room.phase = 0;
     room.used = 0;
     room.rerolls = 0;
+    room.round = (room.round || 0) + 1;
     room.hand = hand(body.questions);
     room.active = null;
     room.final = null;
+    room.chat = [];
     room.speech = suspects.length ? { type: "opening", index: 0 } : null;
-    room.history.push("게임 시작");
+    room.history = title === "새 게임 시작" ? [title] : [...(room.history || []), title];
     room.history.push(`경찰은 ${police}입니다.`);
     room.history.push("시작 발언을 진행합니다.");
+    return room;
+  }
+
+  async start(body) {
+    const room = this.normalize(await this.data());
+    if (!room) return json({ error: "room_not_found" }, 404);
+    const name = text(body.name, 16);
+    if (!this.isHost(room, name)) return json({ error: "host_only" }, 403);
+    if (room.started) return json(this.view(room, name));
+    if (room.players.length < 3) return json({ error: "need_three_players" }, 409);
+    this.begin(room, body, "게임 시작");
+    return json(this.view(await this.save(room), name));
+  }
+
+  async restart(body) {
+    const room = this.normalize(await this.data());
+    if (!room) return json({ error: "room_not_found" }, 404);
+    const name = text(body.name, 16);
+    if (!this.isHost(room, name)) return json({ error: "host_only" }, 403);
+    if (room.players.length < 3) return json({ error: "need_three_players" }, 409);
+    this.begin(room, body, "새 게임 시작");
     return json(this.view(await this.save(room), name));
   }
 
@@ -350,7 +371,7 @@ export class RoomHub extends DurableObject {
     const name = text(body.name, 16);
     const target = text(body.target, 16);
     if (!this.isPolice(room, name)) return json({ error: "police_only" }, 403);
-    if (!room.started || room.active || room.final?.done) return json({ error: "bad_state" }, 409);
+    if (!room.started || room.speech || room.active || room.final?.done) return json({ error: "bad_state" }, 409);
     const suspect = this.suspects(room).find((player) => player.name === target);
     if (!suspect) return json({ error: "bad_target" }, 400);
     const correct = suspect.role === "마피아";

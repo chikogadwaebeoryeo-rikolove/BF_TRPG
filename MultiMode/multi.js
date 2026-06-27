@@ -1,5 +1,5 @@
 (() => {
-  const multi = { room: null, selectedQuestion: null, currentName: "플레이어", roleKey: "", handSig: "", caseSig: "", targetSig: "", finalSig: "", rerolling: false };
+  const multi = { room: null, selectedQuestion: null, currentName: "플레이어", roleKey: "", handSig: "", caseSig: "", targetSig: "", finalSig: "", rerolling: false, accuseOpen: false };
 
   function serverBase() {
     return String(window.BF_TRPG_MULTI_SERVER || "").trim().replace(/\/$/, "");
@@ -41,6 +41,15 @@
     if (multi[key] === value) return false;
     multi[key] = value;
     return true;
+  }
+
+  function resetSignals() {
+    multi.selectedQuestion = null;
+    multi.handSig = "";
+    multi.caseSig = "";
+    multi.targetSig = "";
+    multi.finalSig = "";
+    multi.accuseOpen = false;
   }
 
   function renderPlayers() {
@@ -100,7 +109,7 @@
       }
       return;
     }
-    const key = `${multi.room.code}:${player.role}`;
+    const key = `${multi.room.code}:${multi.room.round || 0}:${player.role}`;
     if (multi.roleKey !== key) {
       multi.roleKey = key;
       setRole(player.role, multi.currentName, true);
@@ -114,10 +123,7 @@
     try {
       multi.room = await api("/api/rooms/create", { name: multi.currentName, case: pick(state.cases) });
       multi.roleKey = "";
-      multi.handSig = "";
-      multi.caseSig = "";
-      multi.targetSig = "";
-      multi.finalSig = "";
+      resetSignals();
       setRole(null, multi.currentName);
       openRoom();
       toast(`방 코드 ${multi.room.code}`);
@@ -133,10 +139,7 @@
     try {
       multi.room = await api("/api/rooms/join", { code, name: multi.currentName, jobs });
       multi.roleKey = "";
-      multi.handSig = "";
-      multi.caseSig = "";
-      multi.targetSig = "";
-      multi.finalSig = "";
+      resetSignals();
       setRole(null, multi.currentName);
       openRoom();
       toast(`${multi.room.code} 방에 참여했습니다.`);
@@ -177,12 +180,25 @@
     if (!multi.room) return;
     try {
       multi.room = await api("/api/rooms/start", { code: multi.room.code, name: multi.currentName, jobs, questions });
-      multi.handSig = "";
-      multi.targetSig = "";
-      multi.finalSig = "";
+      resetSignals();
       renderRoom();
     } catch (error) {
       toast(error.message === "need_three_players" ? "3명 이상이어야 시작할 수 있습니다." : "게임을 시작하지 못했습니다.");
+    }
+  }
+
+  async function newGame() {
+    const { jobs, pick, questions, state, toast } = window.App;
+    if (!multi.room) return;
+    if (!isHost()) return toast("방장만 새 게임을 시작할 수 있습니다.");
+    try {
+      multi.room = await api("/api/rooms/restart", { code: multi.room.code, name: multi.currentName, case: pick(state.cases), jobs, questions });
+      multi.roleKey = "";
+      resetSignals();
+      renderRoom();
+      toast("새 게임을 시작했습니다.");
+    } catch (error) {
+      toast(error.message === "need_three_players" ? "3명 이상이어야 새 게임을 시작할 수 있습니다." : error.message === "host_only" ? "방장만 새 게임을 시작할 수 있습니다." : "새 게임을 시작하지 못했습니다.");
     }
   }
 
@@ -234,11 +250,18 @@
     const room = multi.room;
     const rerolls = room.rerolls || 0;
     const blocked = !room.started || Boolean(room.speech) || Boolean(room.active) || Boolean(room.final) || room.phase > 1 || room.used >= 3;
-    const hand = room.hand || [];
+    const hand = room.speech ? [] : room.hand || [];
     const drawQuestions = changed("handSig", hand.join("\n"));
     $("multi-question-state").textContent = !room.started ? "3명 이상 입장 후 시작" : room.speech ? "발언 진행 중" : room.active ? `${room.active.target} 답변 대기` : isPolice() ? `${room.used}/3 질문` : "경찰 질문 대기";
     $("multi-question-list").replaceChildren();
     $("multi-target-list").replaceChildren();
+    if (!room.started || room.speech) {
+      multi.selectedQuestion = null;
+      changed("targetSig", "");
+      $("btn-reroll-multi-hand").textContent = `패 리롤 (${rerolls}/3)`;
+      $("btn-reroll-multi-hand").disabled = true;
+      return;
+    }
     hand.forEach((text, index) => {
       const btn = document.createElement("button");
       btn.className = `question-card ${multi.selectedQuestion === text ? "selected" : ""}`;
@@ -303,11 +326,15 @@
 
   function finalEnabled() {
     const room = multi.room;
-    return Boolean(room?.started && !room.active && !room.final?.done);
+    return Boolean(room?.started && !room.speech && !room.active && !room.final?.done);
   }
 
   function finalText(final) {
-    if (!final) return finalEnabled() ? isPolice() ? "범인 지목 가능" : "경찰 지목 가능" : "게임 시작 후 가능";
+    if (!final) {
+      if (!multi.room?.started) return "게임 시작 후 가능";
+      if (multi.room.speech) return "알리바이 이후 가능";
+      return finalEnabled() ? isPolice() ? "범인 지목 가능" : "경찰 지목 대기" : "진행 중";
+    }
     if (final.suspectCorrect && !final.done) return "무기까지 맞춰야 정답";
     if (!final.suspectCorrect) return "범인 지목 실패";
     return final.weaponCorrect ? "정답 처리 완료" : "무기 지목 실패";
@@ -319,18 +346,22 @@
     const final = room?.final;
     const canAccuse = isPolice() && finalEnabled() && !final;
     const canGuessWeapon = isPolice() && final?.suspectCorrect && !final.done;
+    const showAccuse = canAccuse && multi.accuseOpen;
     $("multi-final-state").textContent = finalText(final);
+    $("btn-open-accuse").classList.toggle("hidden", Boolean(final));
+    $("btn-open-accuse").disabled = !canAccuse;
+    $("btn-open-accuse").textContent = multi.accuseOpen ? "지목 닫기" : "범인 지목하기";
     $("multi-final-suspects").replaceChildren();
-    suspects().forEach((player) => {
+    $("multi-final-suspects").classList.toggle("hidden", !showAccuse);
+    if (showAccuse) suspects().forEach((player) => {
       const btn = document.createElement("button");
       btn.className = "suspect-card";
-      btn.disabled = !canAccuse;
       btn.innerHTML = `<strong>${player.name}</strong><span>${player.job || "직업 미정"}</span>`;
       btn.addEventListener("click", () => accuse(player.name));
       $("multi-final-suspects").appendChild(btn);
     });
-    const finalSig = suspects().map((player) => `${player.name}:${player.job || ""}:${canAccuse}`).join("|");
-    if (changed("finalSig", finalSig) && suspects().length) window.App.animateCards(Array.from($("multi-final-suspects").children));
+    const finalSig = suspects().map((player) => `${player.name}:${player.job || ""}:${showAccuse}`).join("|");
+    if (showAccuse && changed("finalSig", finalSig) && suspects().length) window.App.animateCards(Array.from($("multi-final-suspects").children));
     $("weapon-guess-panel").classList.toggle("hidden", !canGuessWeapon);
     $("weapon-guess-input").disabled = !canGuessWeapon;
     $("btn-submit-weapon").disabled = !canGuessWeapon;
@@ -341,10 +372,17 @@
     const { toast } = window.App;
     try {
       multi.room = await api("/api/rooms/accuse", { code: multi.room.code, name: multi.currentName, target });
+      multi.accuseOpen = false;
       renderRoom();
     } catch (error) {
       toast("지목할 수 없습니다.");
     }
+  }
+
+  function toggleAccuse() {
+    if (!isPolice() || !finalEnabled() || multi.room?.final) return;
+    multi.accuseOpen = !multi.accuseOpen;
+    renderFinalControl();
   }
 
   async function submitWeapon() {
@@ -407,5 +445,5 @@
     }));
   }
 
-  window.MultiMode = { createRoom, joinRoom, refreshRoom, startRoom, rerollHand, submitTalk, submitWeapon, kickPlayer };
+  window.MultiMode = { createRoom, joinRoom, refreshRoom, startRoom, newGame, rerollHand, toggleAccuse, submitTalk, submitWeapon, kickPlayer };
 })();
