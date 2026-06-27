@@ -1,5 +1,5 @@
 (() => {
-  const solo = { caseInfo: null, suspects: [], phase: 0, used: 0, selected: null, log: [], hand: [], rerolls: 0 };
+  const solo = { caseInfo: null, suspects: [], phase: 0, used: 0, selected: null, log: [], hand: [], rerolls: 0, rerolling: false, motion: { case: false, suspects: false, questions: false, final: false } };
 
   function shuffle(list) {
     return [...list].sort(() => Math.random() - 0.5);
@@ -7,6 +7,12 @@
 
   function drawHand() {
     solo.hand = shuffle(window.App.questions).slice(0, 5);
+  }
+
+  function setMotion(...keys) {
+    keys.forEach((key) => {
+      solo.motion[key] = true;
+    });
   }
 
   function makeAlibi(gameCase, culprit, job) {
@@ -89,7 +95,9 @@
     solo.selected = null;
     solo.log = [];
     solo.rerolls = 0;
+    solo.rerolling = false;
     drawHand();
+    setMotion("case", "suspects", "questions", "final");
     openingLines();
     setMode("solo");
     setRole("경찰", "플레이어", true);
@@ -106,6 +114,7 @@
     $("case-victim").textContent = `피해자: ${gameCase.victim || "미상"}`;
     $("case-weapon").textContent = gameCase.weapon || "미상";
     $("case-scene").textContent = gameCase.scene || "미상";
+    if (solo.motion.case) window.App.animateCards([$("case-victim"), $("case-weapon").parentElement, $("case-scene").parentElement]);
     $("suspect-count").textContent = `${solo.suspects.length}명`;
     $("phase-title").textContent = ["1차 질문", "2차 질문", "마지막 발언", "범인 지목", "결과"][solo.phase] || "수사";
     $("phase-count").textContent = solo.phase < 2 ? `${solo.used}/3` : "";
@@ -113,6 +122,9 @@
     renderQuestions();
     renderLog();
     renderFinalPick();
+    Object.keys(solo.motion).forEach((key) => {
+      solo.motion[key] = false;
+    });
   }
 
   function renderSuspects() {
@@ -124,6 +136,7 @@
       if (solo.selected && solo.phase < 2) card.addEventListener("click", () => answerQuestion(suspect));
       return card;
     }));
+    if (solo.motion.suspects) window.App.animateCards(Array.from($("suspect-list").children));
   }
 
   function renderQuestions() {
@@ -132,7 +145,7 @@
     box.replaceChildren();
     $("btn-reroll-hand").classList.toggle("hidden", solo.phase > 1);
     $("btn-reroll-hand").textContent = `패 리롤 (${solo.rerolls}/3)`;
-    $("btn-reroll-hand").disabled = solo.phase > 1 || solo.used >= 3 || solo.rerolls >= 3;
+    $("btn-reroll-hand").disabled = solo.rerolling || solo.phase > 1 || solo.used >= 3 || solo.rerolls >= 3;
     $("btn-next-phase").classList.toggle("hidden", solo.phase === 3 || solo.phase === 4);
     $("btn-next-phase").textContent = solo.phase === 2 ? "범인 지목" : "다음 단계";
     if (solo.phase > 1) return;
@@ -145,6 +158,7 @@
       btn.addEventListener("click", () => selectQuestion(index, text));
       box.appendChild(btn);
     });
+    if (solo.motion.questions) window.App.animateCards(Array.from(box.children));
   }
 
   function selectQuestion(index, text) {
@@ -183,15 +197,24 @@
     render();
   }
 
-  function rerollHand() {
-    const { toast } = window.App;
+  async function rerollHand() {
+    const { $, animateCards, wait, toast } = window.App;
     if (solo.phase > 1) return;
+    if (solo.rerolling) return;
     if (solo.used >= 3) return toast("패 3개를 모두 사용해 리롤할 수 없습니다.");
     if (solo.rerolls >= 3) return toast("패 리롤은 게임 전체에서 3번까지만 가능합니다.");
+    solo.rerolling = true;
+    const cards = Array.from($("question-list").querySelectorAll(".question-card"));
+    if (cards.length) {
+      animateCards(cards, "discard");
+      await wait(260);
+    }
     solo.selected = null;
     solo.rerolls += 1;
     drawHand();
+    setMotion("questions");
     solo.log.push(`질문 패를 리롤했습니다. (${solo.rerolls}/3)`);
+    solo.rerolling = false;
     render();
   }
 
@@ -222,6 +245,7 @@
       solo.used = 0;
       solo.selected = null;
       drawHand();
+      setMotion("questions");
       solo.log.push("2차 질문을 시작합니다.");
     } else if (solo.phase === 1) {
       solo.phase = 2;
@@ -237,9 +261,9 @@
   function renderFinalPick() {
     const { $ } = window.App;
     const box = $("final-pick");
-    box.classList.toggle("hidden", solo.phase !== 3 && solo.phase !== 4);
+    box.classList.toggle("hidden", solo.phase === 4);
     box.replaceChildren();
-    if (solo.phase !== 3) return;
+    if (solo.phase === 4) return;
     solo.suspects.forEach((suspect) => {
       const btn = document.createElement("button");
       btn.className = "suspect-card";
@@ -247,11 +271,13 @@
       btn.addEventListener("click", () => revealResult(suspect));
       box.appendChild(btn);
     });
+    if (solo.motion.final) window.App.animateCards(Array.from(box.children));
   }
 
   function revealResult(suspect) {
     const answer = solo.suspects.find((item) => item.culprit);
     solo.phase = 4;
+    solo.selected = null;
     solo.log.push(suspect.culprit ? "정답입니다. 수사 성공." : `오답입니다. 실제 범인은 ${answer.name}(${answer.job})입니다.`);
     solo.log.push(solo.caseInfo.truth);
     render();
