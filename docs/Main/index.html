@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Omega Byte</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="./styles.css?v=20260627-6">
-  <link rel="stylesheet" href="../SoloMode/solo.css?v=20260627-6">
-  <link rel="stylesheet" href="../MultiMode/multi.css?v=20260627-6">
+  <link rel="stylesheet" href="./styles.css?v=20260628-1">
+  <link rel="stylesheet" href="../SoloMode/solo.css?v=20260628-1">
+  <link rel="stylesheet" href="../MultiMode/multi.css?v=20260628-1">
 </head>
 <body>
   <canvas id="particle-canvas"></canvas>
@@ -39,6 +39,10 @@
         </div>
 
         <div id="multi-panel" class="multi-panel hidden">
+          <div class="multi-type-row">
+            <button id="btn-multi-online" class="tab-button active" type="button">온라인</button>
+            <button id="btn-multi-offline" class="tab-button" type="button">오프라인</button>
+          </div>
           <label class="field">
             <span>플레이어 이름</span>
             <input id="player-name-input" maxlength="16" placeholder="플레이어">
@@ -285,10 +289,18 @@
     </div>
   </div>
 
+  <div id="modal-reveal" class="reveal-modal hidden">
+    <div class="reveal-card">
+      <button id="btn-close-reveal" class="modal-close hidden">×</button>
+      <span id="reveal-title"></span>
+      <p id="reveal-text"></p>
+    </div>
+  </div>
+
   <div id="toast"><span id="toast-text"></span></div>
-  <script src="./app.js?v=20260627-6" defer></script>
-  <script src="../SoloMode/solo.js?v=20260627-6" defer></script>
-  <script src="../MultiMode/config.js?v=20260627-6" defer></script>
-  <script src="../MultiMode/multi.js?v=20260627-6" defer></script>
+  <script src="./app.js?v=20260628-1" defer></script>
+  <script src="../SoloMode/solo.js?v=20260628-1" defer></script>
+  <script src="../MultiMode/config.js?v=20260628-1" defer></script>
+  <script src="../MultiMode/multi.js?v=20260628-1" defer></script>
 </body>
 </html>

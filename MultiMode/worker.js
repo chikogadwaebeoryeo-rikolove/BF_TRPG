@@ -16,7 +16,33 @@ const fallbackQuestions = [
   "알리바이의 빈 구간은 어디인가?",
   "공개 기록 중 설명하기 어려운 것은 무엇인가?",
   "피해자와 금전 또는 원한 문제가 있었나?",
-  "도구나 기록이 원래 있던 위치는 어디인가?"
+  "도구나 기록이 원래 있던 위치는 어디인가?",
+  "사건 직전 피해자와 어떤 대화를 나눴나?",
+  "사건 후 가장 먼저 확인한 것은 무엇인가?",
+  "현장에 있었던 물건 중 낯선 것은 무엇인가?",
+  "피해자와 단둘이 있었던 시간이 있었나?",
+  "당신이 마지막으로 본 피해자의 상태는 어땠나?",
+  "사건 당일 평소와 달랐던 행동은 무엇인가?",
+  "사건 장소에 간 이유를 말하라.",
+  "피해자에게 숨긴 약속이나 연락이 있었나?",
+  "그 시간대 당신의 이동 경로를 말하라.",
+  "현장에서 들은 소리나 본 사람은 누구인가?",
+  "피해자 물건을 만진 적이 있나?",
+  "사건 전에 피해자와 다툰 적이 있나?",
+  "사건 뒤 옷이나 소지품을 바꿨나?",
+  "다른 용의자 중 의심스러운 사람은 누구인가?",
+  "피해자가 두려워하던 사람이 있었나?",
+  "사건 시각을 어떻게 기억하고 있나?",
+  "현장 근처에서 멈춘 이유는 무엇인가?",
+  "피해자와 금전 외 갈등이 있었나?",
+  "당신 알리바이에서 빠진 장면은 무엇인가?",
+  "사건 전후 연락 기록을 설명하라.",
+  "피해자에게 마지막으로 받은 말은 무엇인가?",
+  "현장에 남은 흔적 중 설명 가능한 것은 무엇인가?",
+  "누군가를 대신해 움직인 적이 있나?",
+  "사건 당일 가장 곤란했던 일은 무엇인가?",
+  "피해자와의 관계를 한 문장으로 말하라.",
+  "당신이 감추고 싶은 사실은 무엇인가?"
 ];
 
 const fallbackJobs = ["간호사", "기자", "경찰", "회계사", "변호사", "상담원", "경비원", "프로그래머", "연예인", "약사", "교사", "배달원", "알바생", "사업가", "택시기사", "의사", "정치인", "요리사", "유튜버", "은행원", "탐정", "연구원", "건물주", "보험설계사", "담당 변호사", "담당 의사"];
@@ -47,7 +73,7 @@ const shuffle = (list) => {
   }
   return copy;
 };
-const hand = (questions) => shuffle(Array.isArray(questions) && questions.length ? questions.map((item) => text(item, 180)).filter(Boolean) : fallbackQuestions).slice(0, 5);
+const questionPool = (questions) => Array.isArray(questions) && questions.length ? questions.map((item) => text(item, 180)).filter(Boolean) : fallbackQuestions;
 const uniqueTexts = (list, max = 30) => [...new Set((Array.isArray(list) ? list : []).map((item) => text(item, max)).filter(Boolean))];
 const clean = (value) => text(value, 80).replace(/\s+/g, "").toLowerCase();
 const jobPool = (jobs) => {
@@ -139,6 +165,7 @@ export class RoomHub extends DurableObject {
     room.history ||= [];
     room.chat ||= [];
     room.hand ||= [];
+    room.questionDeck ||= [];
     room.used ||= 0;
     room.rerolls ||= 0;
     room.banned ||= [];
@@ -201,6 +228,7 @@ export class RoomHub extends DurableObject {
       used: 0,
       rerolls: 0,
       hand: [],
+      questionDeck: [],
       active: null,
       speech: null,
       final: null,
@@ -271,7 +299,8 @@ export class RoomHub extends DurableObject {
     room.used = 0;
     room.rerolls = 0;
     room.round = (room.round || 0) + 1;
-    room.hand = hand(body.questions);
+    room.questionDeck = shuffle(questionPool(body.questions));
+    room.hand = this.drawHand(room, body.questions);
     room.active = null;
     room.final = null;
     room.chat = [];
@@ -280,6 +309,17 @@ export class RoomHub extends DurableObject {
     room.history.push(`경찰은 ${police}입니다.`);
     room.history.push("시작 발언을 진행합니다.");
     return room;
+  }
+
+  drawHand(room, questions) {
+    const pool = questionPool(questions);
+    if (!room.questionDeck?.length) room.questionDeck = shuffle(pool);
+    const cards = room.questionDeck.splice(0, 5);
+    if (cards.length < 5) {
+      room.questionDeck = shuffle(pool.filter((question) => !cards.includes(question)));
+      cards.push(...room.questionDeck.splice(0, 5 - cards.length));
+    }
+    return cards;
   }
 
   async start(body) {
@@ -312,7 +352,7 @@ export class RoomHub extends DurableObject {
     if (room.used >= 3) return json({ error: "hand_locked" }, 409);
     if (room.rerolls >= 3) return json({ error: "reroll_limit" }, 409);
     room.rerolls += 1;
-    room.hand = hand(body.questions);
+    room.hand = this.drawHand(room, body.questions);
     room.history.push(`경찰이 질문 패를 리롤했습니다. (${room.rerolls}/3)`);
     return json(this.view(await this.save(room), name));
   }
@@ -348,7 +388,7 @@ export class RoomHub extends DurableObject {
       if (room.phase === 0) {
         room.phase = 1;
         room.used = 0;
-        room.hand = hand(body.questions);
+        room.hand = this.drawHand(room, body.questions);
         room.history.push("2차 질문을 시작합니다.");
       } else if (room.phase === 1) {
         room.phase = 2;

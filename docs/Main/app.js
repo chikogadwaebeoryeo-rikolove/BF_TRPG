@@ -49,7 +49,33 @@
     "알리바이의 빈 구간은 어디인가?",
     "공개 기록 중 설명하기 어려운 것은 무엇인가?",
     "피해자와 금전 또는 원한 문제가 있었나?",
-    "도구나 기록이 원래 있던 위치는 어디인가?"
+    "도구나 기록이 원래 있던 위치는 어디인가?",
+    "사건 직전 피해자와 어떤 대화를 나눴나?",
+    "사건 후 가장 먼저 확인한 것은 무엇인가?",
+    "현장에 있었던 물건 중 낯선 것은 무엇인가?",
+    "피해자와 단둘이 있었던 시간이 있었나?",
+    "당신이 마지막으로 본 피해자의 상태는 어땠나?",
+    "사건 당일 평소와 달랐던 행동은 무엇인가?",
+    "사건 장소에 간 이유를 말하라.",
+    "피해자에게 숨긴 약속이나 연락이 있었나?",
+    "그 시간대 당신의 이동 경로를 말하라.",
+    "현장에서 들은 소리나 본 사람은 누구인가?",
+    "피해자 물건을 만진 적이 있나?",
+    "사건 전에 피해자와 다툰 적이 있나?",
+    "사건 뒤 옷이나 소지품을 바꿨나?",
+    "다른 용의자 중 의심스러운 사람은 누구인가?",
+    "피해자가 두려워하던 사람이 있었나?",
+    "사건 시각을 어떻게 기억하고 있나?",
+    "현장 근처에서 멈춘 이유는 무엇인가?",
+    "피해자와 금전 외 갈등이 있었나?",
+    "당신 알리바이에서 빠진 장면은 무엇인가?",
+    "사건 전후 연락 기록을 설명하라.",
+    "피해자에게 마지막으로 받은 말은 무엇인가?",
+    "현장에 남은 흔적 중 설명 가능한 것은 무엇인가?",
+    "누군가를 대신해 움직인 적이 있나?",
+    "사건 당일 가장 곤란했던 일은 무엇인가?",
+    "피해자와의 관계를 한 문장으로 말하라.",
+    "당신이 감추고 싶은 사실은 무엇인가?"
   ];
   const names = ["오지훈", "김태윤", "정수빈", "송하린", "강도윤", "한유라", "문세진", "백지아", "서민재", "유하늘"];
   const jobs = ["간호사", "기자", "경찰", "회계사", "변호사", "상담원", "경비원", "프로그래머", "연예인", "약사", "교사", "배달원", "알바생", "사업가", "택시기사", "의사", "정치인", "요리사", "유튜버", "은행원", "탐정", "연구원", "건물주", "보험설계사", "담당 변호사", "담당 의사"];
@@ -58,7 +84,7 @@
     시민: { title: "시민", image: "../역할카드/시민.jpg" },
     마피아: { title: "마피아", image: "../역할카드/마피아.jpg" }
   };
-  const state = { mode: "solo", cases: fallbackCases, roomTimer: null, toastTimer: null, role: null, playerName: "플레이어", roleHold: false };
+  const state = { mode: "solo", cases: fallbackCases, roomTimer: null, toastTimer: null, revealTimer: null, revealToken: 0, role: null, playerName: "플레이어", roleHold: false };
 
   function toast(text) {
     $("toast-text").textContent = text;
@@ -103,6 +129,17 @@
     nodes.forEach((node, index) => animateCard(node, index, type));
   }
 
+  function renderBrandTitle() {
+    const title = $("brand-title");
+    const text = title.textContent.trim();
+    title.replaceChildren(...Array.from(text).map((char, index) => {
+      const span = document.createElement("span");
+      span.textContent = char === " " ? "\u00a0" : char;
+      span.style.setProperty("--letter-delay", `${index * 85}ms`);
+      return span;
+    }));
+  }
+
   function setMode(mode) {
     state.mode = mode;
     const profile = profiles[mode];
@@ -142,6 +179,34 @@
   function closeModal(modal) {
     modal.classList.add("hidden");
     if (!$$(".modal").some((item) => !item.classList.contains("hidden"))) document.body.classList.remove("modal-open");
+  }
+
+  function closeReveal() {
+    clearTimeout(state.revealTimer);
+    $("modal-reveal").classList.add("hidden");
+    $("btn-close-reveal").classList.add("hidden");
+  }
+
+  function showReveal(title, text) {
+    const token = ++state.revealToken;
+    const content = String(text || "");
+    clearTimeout(state.revealTimer);
+    $("reveal-title").textContent = title;
+    $("reveal-text").textContent = "";
+    $("btn-close-reveal").classList.add("hidden");
+    $("modal-reveal").classList.remove("hidden");
+    let index = 0;
+    const tick = () => {
+      if (token !== state.revealToken) return;
+      $("reveal-text").textContent = content.slice(0, index);
+      if (index <= content.length) {
+        index += 1;
+        state.revealTimer = setTimeout(tick, 28);
+      } else {
+        $("btn-close-reveal").classList.remove("hidden");
+      }
+    };
+    tick();
   }
 
   function renderRoleProfile() {
@@ -241,6 +306,8 @@
     bindMemo("multi-case-memo");
     $("btn-solo").addEventListener("click", () => window.SoloMode.start());
     $("btn-multi").addEventListener("click", () => setMode("multi"));
+    $("btn-multi-online").addEventListener("click", () => window.MultiMode.setConnection("online"));
+    $("btn-multi-offline").addEventListener("click", () => window.MultiMode.setConnection("offline"));
     $("btn-create-room").addEventListener("click", () => window.MultiMode.createRoom());
     $("join-room-form").addEventListener("submit", (event) => {
       event.preventDefault();
@@ -277,6 +344,7 @@
     $("btn-close-rules").addEventListener("click", () => closeModal($("modal-rules")));
     $("btn-close-modal").addEventListener("click", () => closeModal($("modal-dev-logs")));
     $("btn-close-role").addEventListener("click", () => closeModal($("modal-role")));
+    $("btn-close-reveal").addEventListener("click", closeReveal);
     $$(".modal").forEach((modal) => modal.addEventListener("click", (event) => {
       if (event.target === modal) closeModal(modal);
     }));
@@ -287,6 +355,7 @@
   }
 
   async function init() {
+    renderBrandTitle();
     initParticles();
     setMode("solo");
     setRole(null, "플레이어");
@@ -302,6 +371,6 @@
     }
   }
 
-  window.App = { $, $$, pick, profiles, questions, names, jobs, roleDefs, state, toast, getJson, fillList, wait, animateCard, animateCards, setMode, showLobby, showSession, setRole, showRoleModal, renderRoleProfile };
+  window.App = { $, $$, pick, profiles, questions, names, jobs, roleDefs, state, toast, getJson, fillList, wait, animateCard, animateCards, setMode, showLobby, showSession, setRole, showRoleModal, renderRoleProfile, showReveal };
   document.addEventListener("DOMContentLoaded", init);
 })();

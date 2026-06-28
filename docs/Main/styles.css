@@ -125,6 +125,14 @@ body.session-open #main-title-container {
   text-shadow: 0 4px 25px rgba(0, 0, 0, 0.95);
 }
 
+#brand-title span {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(0.55rem);
+  animation: titleLetter 0.5s ease forwards;
+  animation-delay: var(--letter-delay, 0ms);
+}
+
 #main-content {
   position: relative;
   z-index: 1;
@@ -183,6 +191,11 @@ body.session-open #main-title-container {
 .tab-row {
   display: flex;
   gap: 0.75rem;
+}
+
+.multi-type-row {
+  display: flex;
+  gap: 0.55rem;
 }
 
 .mode-button,
@@ -609,6 +622,13 @@ body.session-open #main-title-container {
   }
 }
 
+@keyframes titleLetter {
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .chat-form {
   display: flex;
   gap: 0.6rem;
@@ -643,6 +663,46 @@ body.session-open #main-title-container {
   justify-content: center;
   background: rgba(0, 0, 0, 0.94);
   padding: 1rem;
+}
+
+.reveal-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 320;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.96);
+  padding: 1rem;
+}
+
+.reveal-card {
+  position: relative;
+  width: min(100%, 56rem);
+  min-height: min(56vh, 30rem);
+  border: 1px solid rgba(197, 168, 128, 0.62);
+  border-radius: var(--radius);
+  background: #050607;
+  box-shadow: 0 34px 100px rgba(0, 0, 0, 0.9);
+  padding: clamp(1.4rem, 5vw, 3.5rem);
+}
+
+#reveal-title {
+  display: block;
+  color: var(--gold);
+  font: 0.82rem Arial, sans-serif;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  margin-bottom: 1.2rem;
+}
+
+#reveal-text {
+  margin: 0;
+  color: #fff3dc;
+  font-size: clamp(2rem, 7vw, 5.5rem);
+  font-weight: 800;
+  line-height: 1.18;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
 }
 
 .modal-card {
@@ -837,6 +897,7 @@ body.session-open #main-title-container {
 
   .mode-grid,
   .multi-actions,
+  .multi-type-row,
   .footer-actions,
   .tab-row {
     display: grid;
