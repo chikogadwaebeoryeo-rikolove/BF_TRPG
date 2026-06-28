@@ -231,6 +231,9 @@
       line.textContent = text;
       return line;
     }));
+    requestAnimationFrame(() => {
+      box.scrollTop = box.scrollHeight;
+    });
   }
 
   function closingLines() {
