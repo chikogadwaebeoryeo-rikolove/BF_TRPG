@@ -81,7 +81,9 @@
     const gameCase = safe.case || {};
     safe.private = local?.role === "마피아" ? {
       weapon: gameCase.weapon || "",
-      overview: [gameCase.story, gameCase.motive ? `동기: ${gameCase.motive}` : ""].filter(Boolean).join("\n")
+      overview: [gameCase.story, gameCase.motive ? `동기: ${gameCase.motive}` : ""].filter(Boolean).join("\n"),
+      truth: gameCase.truth || "",
+      alibi: gameCase.alibi || ""
     } : null;
     safe.case = { id: gameCase.id, victim: gameCase.victim, scene: gameCase.scene };
     safe.players = safe.players.map((player) => ({ ...player, role: player.name === viewer || player.role === "경찰" ? player.role : null }));
@@ -457,6 +459,12 @@
     if (!room) return;
     syncRole();
     const gameCase = room.case || pick(state.cases);
+    const fullCase = state.cases.find((item) => String(item.id) === String(gameCase.id)) || gameCase;
+    const privateCase = room.private ? {
+      overview: room.private.overview || [fullCase.story, fullCase.motive ? `동기: ${fullCase.motive}` : ""].filter(Boolean).join("\n"),
+      truth: room.private.truth || fullCase.truth || "",
+      alibi: room.private.alibi || fullCase.alibi || ""
+    } : null;
     const share = isOffline() ? `오프라인 코드: ${room.code}` : `${location.origin}${location.pathname}?room=${room.code}`;
     $("session-title").textContent = room.started ? "멀티모드 진행 중" : "멀티모드 대기방";
     $("room-code-label").textContent = room.code;
@@ -473,8 +481,12 @@
     $("multi-case-scene").textContent = gameCase.scene || "미상";
     $("multi-case-line").textContent = `피해자: ${gameCase.victim || "미상"} · 무기: ${room.private?.weapon || "미확인"} · 현장: ${gameCase.scene || "미상"}`;
     changed("caseSig", [gameCase.victim || "", room.private?.weapon || "", gameCase.scene || ""].join("|"));
-    $("mafia-case-brief").classList.toggle("hidden", !room.private?.overview);
-    $("mafia-case-story").textContent = room.private?.overview || "";
+    $("mafia-case-brief").classList.toggle("hidden", !privateCase);
+    $("mafia-case-story").textContent = privateCase ? [
+      privateCase.overview ? `사건 개요\n${privateCase.overview}` : "",
+      privateCase.truth ? `진실\n${privateCase.truth}` : "",
+      privateCase.alibi ? `알리바이\n${privateCase.alibi}` : ""
+    ].filter(Boolean).join("\n\n") : "";
     renderTalkControl();
     renderQuestionControl();
     renderFinalControl();

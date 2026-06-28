@@ -533,6 +533,7 @@ body.session-open #main-title-container {
 
 .private-brief p {
   margin: 0;
+  white-space: pre-line;
 }
 
 .case-memo {

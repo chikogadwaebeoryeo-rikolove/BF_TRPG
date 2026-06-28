@@ -190,7 +190,9 @@ export class RoomHub extends DurableObject {
     const gameCase = safe.case || {};
     safe.private = local?.role === "마피아" ? {
       weapon: gameCase.weapon || "",
-      overview: [gameCase.story, gameCase.motive ? `동기: ${gameCase.motive}` : ""].filter(Boolean).join("\n")
+      overview: [gameCase.story, gameCase.motive ? `동기: ${gameCase.motive}` : ""].filter(Boolean).join("\n"),
+      truth: gameCase.truth || "",
+      alibi: gameCase.alibi || ""
     } : null;
     safe.case = { id: gameCase.id, victim: gameCase.victim, scene: gameCase.scene };
     safe.players = safe.players.map((player) => ({
