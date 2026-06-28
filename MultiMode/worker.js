@@ -56,6 +56,13 @@ const json = (data, status = 200) => new Response(JSON.stringify(data), {
   }
 });
 
+const health = () => json({
+  ok: true,
+  status: "online",
+  service: "BF_TRPG multi server",
+  api: "/api/rooms"
+});
+
 const text = (value, max = 300) => String(value || "").trim().slice(0, max);
 const roomCode = () => Array.from({ length: 6 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]).join("");
 const randomInt = (max) => {
@@ -106,6 +113,7 @@ export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") return new Response(null, { headers: cors });
     const url = new URL(request.url);
+    if (url.pathname === "/" || url.pathname === "/health") return health();
     if (!url.pathname.startsWith("/api/rooms/")) return json({ error: "not_found" }, 404);
     const body = await readBody(request);
     if (url.pathname.endsWith("/create")) {
