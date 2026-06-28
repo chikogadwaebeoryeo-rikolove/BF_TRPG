@@ -127,6 +127,10 @@ body.session-open #main-title-container {
 
 #brand-title span {
   display: inline-block;
+  color: transparent;
+  background: linear-gradient(90deg, #d1d5db, #ffffff, #9ca3af);
+  -webkit-background-clip: text;
+  background-clip: text;
   opacity: 0;
   transform: translateY(0.55rem);
   animation: titleLetter 0.5s ease forwards;
